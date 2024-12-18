@@ -1,0 +1,102 @@
+# Ignore Visual Studio specific files
+.vscode/
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Rider specific files
+.idea/
+*.iml
+out/
+
+# DotNet Core related
+project.lock.json
+project.fragment.lock.json
+artifacts/
+**/bin/
+**/obj/
+**/Debug/
+**/Release/
+**/publish/
+*.pdb
+*.dll
+*.exe
+*.app
+*.log
+*.cache
+
+# Build directories
+Build/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+
+# User-specific files
+*.rsuser
+*.ruleset
+*.resharperuser
+*.DotSettings.user
+
+# Rider workspace files
+*.idea/
+.idea/
+.idea/*/
+*.ipr
+*.iws
+
+# Crash reports and temporary files
+crashlytics-build.properties
+*.swp
+*.swo
+*.tmp
+*.temp
+*.tmp.*
+
+# Logs
+*.log
+*.tlg
+*.trace
+
+# Environment-related files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Database files
+*.mdf
+*.ldf
+
+# NPM package directories
+node_modules/
+
+# Coverage files
+*.coverage
+*.coveragexml
+*.testResults
+TestResults/
+*.ncrunch*
+nCrunchTemp/
+
+# Rider and IDE caches
+.idea/
+.idea/*/
+*.iml
+out/
+
+# JetBrains Rider settings
+.idea_modules/
+.idea/
+.idea_modules/
+.idea/**/workspace.xml
+.idea/**/tasks.xml
+.idea/**/shelf/
+.idea/**/shelvedChanges/
+
+# Miscellaneous
+Thumbs.db
+Desktop.ini
