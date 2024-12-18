@@ -8,15 +8,15 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
   <PropertyGroup>
-    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationManifest>Assets/Config/app.manifest</ApplicationManifest>
     <StartupObject>AshClicker.Program</StartupObject>
-    <ApplicationIcon>12489.ico</ApplicationIcon>
+    <ApplicationIcon>Assets/Icons/logo.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Update="AshForm.cs">
+    <Compile Update="UI\Forms\AshForm.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Update="KeySelectionFrame.cs">
+    <Compile Update="UI\Forms\KeySelectionFrame.cs">
       <SubType>Form</SubType>
     </Compile>
   </ItemGroup>
