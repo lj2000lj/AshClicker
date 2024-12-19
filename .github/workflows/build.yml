@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    runs-on: windows-latest  # 指定 Windows 环境，适配 net6.0-windows7.0
+    runs-on: windows-latest
 
     steps:
       - name: 检出代码
@@ -16,7 +16,7 @@ jobs:
       - name: 设置 .NET SDK
         uses: actions/setup-dotnet@v3
         with:
-          dotnet-version: '6.0.x'  # 确保使用 .NET 6.0
+          dotnet-version: '6.0.x'
 
       - name: 恢复依赖项
         run: dotnet restore
@@ -25,24 +25,22 @@ jobs:
         run: dotnet build --configuration Release
 
       - name: 发布应用程序
-        run: dotnet publish -c Release -o publish
+        run: dotnet publish -c Release -o publish -p:PublishSingleFile=true --self-contained false
 
       - name: 重命名文件
         run: |
           cd publish
-          ren AshClicker.exe 岚尘按键.exe  # 使用 Windows 命令重命名文件
-
-      - name: 打包压缩文件
-        run: |
-          cd publish
-          powershell Compress-Archive -Path * -DestinationPath ../岚尘按键-v${{ github.ref_name }}.zip
+          Rename-Item "AshClicker.exe" "AshClicker-${{ github.ref_name }}.exe"
 
       - name: 计算指纹
         run: |
           cd publish
-          certutil -hashfile 岚尘按键.exe SHA256 >> ../指纹信息.txt
-          certutil -hashfile ../岚尘按键-v${{ github.ref_name }}.zip SHA256 >> ../指纹信息.txt
+          certutil -hashfile AshClicker-${{ github.ref_name }}.exe SHA256 >> ../指纹信息.txt
           type ../指纹信息.txt
+
+      - name: 读取指纹内容
+        id: read_hashes
+        run: echo "::set-output name=hashes::$(cat 指纹信息.txt)"
 
       - name: 创建 Release
         id: create_release
@@ -53,7 +51,7 @@ jobs:
           body: |
             以下是生成的文件指纹（SHA256）：
             ```
-            ${{ steps.hash_output.outputs.hashes }}
+            ${{ steps.read_hashes.outputs.hashes }}
             ```
 
             **验证文件完整性：**
@@ -68,13 +66,15 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: 上传压缩文件
+      - name: 上传可执行文件
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: 岚尘按键-v${{ github.ref_name }}.zip
-          asset_name: 岚尘按键-v${{ github.ref_name }}.zip
-          asset_content_type: application/zip
+          asset_path: publish/AshClicker-${{ github.ref_name }}.exe
+          asset_name: AshClicker-${{ github.ref_name }}.exe
+          asset_content_type: application/octet-stream
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: 上传指纹文件
         uses: actions/upload-release-asset@v1
@@ -83,3 +83,5 @@ jobs:
           asset_path: 指纹信息.txt
           asset_name: 指纹信息.txt
           asset_content_type: text/plain
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
