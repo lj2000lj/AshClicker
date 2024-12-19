@@ -48,23 +48,27 @@ partial class AshForm
         buttonDeleteKey = new System.Windows.Forms.Button();
         buttonAddKey = new System.Windows.Forms.Button();
         preciseDelay = new System.Windows.Forms.CheckBox();
+        buttonDriverless = new System.Windows.Forms.Button();
+        buttonInstallInterception = new System.Windows.Forms.Button();
+        button1 = new System.Windows.Forms.Button();
         SuspendLayout();
         // 
         // buttonLoadDriver
         // 
-        buttonLoadDriver.Location = new System.Drawing.Point(237, 136);
+        buttonLoadDriver.Location = new System.Drawing.Point(235, 117);
         buttonLoadDriver.Name = "buttonLoadDriver";
-        buttonLoadDriver.Size = new System.Drawing.Size(154, 39);
+        buttonLoadDriver.Size = new System.Drawing.Size(154, 34);
         buttonLoadDriver.TabIndex = 0;
         buttonLoadDriver.Text = "加载 DD 驱动";
         buttonLoadDriver.UseVisualStyleBackColor = true;
+        buttonLoadDriver.Visible = false;
         buttonLoadDriver.Click += button1_Click;
         // 
         // buttonSwitchEnable
         // 
-        buttonSwitchEnable.Location = new System.Drawing.Point(237, 181);
+        buttonSwitchEnable.Location = new System.Drawing.Point(235, 186);
         buttonSwitchEnable.Name = "buttonSwitchEnable";
-        buttonSwitchEnable.Size = new System.Drawing.Size(154, 37);
+        buttonSwitchEnable.Size = new System.Drawing.Size(154, 32);
         buttonSwitchEnable.TabIndex = 1;
         buttonSwitchEnable.Text = "按键开启";
         buttonSwitchEnable.UseVisualStyleBackColor = true;
@@ -76,7 +80,7 @@ partial class AshForm
         label1.Name = "label1";
         label1.Size = new System.Drawing.Size(370, 105);
         label1.TabIndex = 2;
-        label1.Text = ("真不联网的公告：\r\n  - 当前版本 1.0.0\r\n  - 能用就行，有问题请前来 GitHub 提 Issue\r\n  - 需要自行安装 DD 驱动并加载对应的 " + "DLL");
+        label1.Text = "真不联网的公告：\r\n  - 当前版本 1.1.0\r\n  - 能用就行，有问题请前来 GitHub 提 Issue";
         // 
         // label2
         // 
@@ -184,12 +188,43 @@ partial class AshForm
         // 
         preciseDelay.Checked = true;
         preciseDelay.CheckState = System.Windows.Forms.CheckState.Checked;
-        preciseDelay.Location = new System.Drawing.Point(237, 111);
+        preciseDelay.Location = new System.Drawing.Point(237, 95);
         preciseDelay.Name = "preciseDelay";
         preciseDelay.Size = new System.Drawing.Size(104, 24);
         preciseDelay.TabIndex = 12;
         preciseDelay.Text = "精确延迟";
         preciseDelay.UseVisualStyleBackColor = true;
+        // 
+        // buttonDriverless
+        // 
+        buttonDriverless.Location = new System.Drawing.Point(235, 151);
+        buttonDriverless.Name = "buttonDriverless";
+        buttonDriverless.Size = new System.Drawing.Size(154, 34);
+        buttonDriverless.TabIndex = 13;
+        buttonDriverless.Text = "无驱动模式";
+        buttonDriverless.UseVisualStyleBackColor = true;
+        buttonDriverless.Visible = false;
+        buttonDriverless.Click += buttonDriverless_Click;
+        // 
+        // buttonInstallInterception
+        // 
+        buttonInstallInterception.Location = new System.Drawing.Point(235, 117);
+        buttonInstallInterception.Name = "buttonInstallInterception";
+        buttonInstallInterception.Size = new System.Drawing.Size(154, 34);
+        buttonInstallInterception.TabIndex = 14;
+        buttonInstallInterception.Text = "安装驱动";
+        buttonInstallInterception.UseVisualStyleBackColor = true;
+        buttonInstallInterception.Click += buttonInstallInterception_Click;
+        // 
+        // button1
+        // 
+        button1.Location = new System.Drawing.Point(235, 151);
+        button1.Name = "button1";
+        button1.Size = new System.Drawing.Size(154, 34);
+        button1.TabIndex = 15;
+        button1.Text = "卸载驱动";
+        button1.UseVisualStyleBackColor = true;
+        button1.Click += button1_Click_1;
         // 
         // AshForm
         // 
@@ -197,6 +232,8 @@ partial class AshForm
         AutoScaleDimensions = new System.Drawing.SizeF(9F, 20F);
         AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
         ClientSize = new System.Drawing.Size(405, 466);
+        Controls.Add(button1);
+        Controls.Add(buttonInstallInterception);
         Controls.Add(preciseDelay);
         Controls.Add(buttonAddKey);
         Controls.Add(buttonDeleteKey);
@@ -208,8 +245,9 @@ partial class AshForm
         Controls.Add(label3);
         Controls.Add(label2);
         Controls.Add(label1);
-        Controls.Add(buttonLoadDriver);
         Controls.Add(buttonSwitchEnable);
+        Controls.Add(buttonDriverless);
+        Controls.Add(buttonLoadDriver);
         Icon = ((System.Drawing.Icon)resources.GetObject("$this.Icon"));
         MaximizeBox = false;
         Text = "岚尘按键 | 能用就行";
@@ -217,6 +255,12 @@ partial class AshForm
         ResumeLayout(false);
         PerformLayout();
     }
+
+    private System.Windows.Forms.Button button1;
+
+    private System.Windows.Forms.Button buttonInstallInterception;
+
+    private System.Windows.Forms.Button buttonDriverless;
 
     private System.Windows.Forms.CheckBox preciseDelay;
 

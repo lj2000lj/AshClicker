@@ -10,12 +10,14 @@ public class AshConfigPool
     private static readonly Lazy<AshConfigPool> _instance = new(() => new AshConfigPool());
     public static AshConfigPool Instance => _instance.Value;
 
-    private AshConfigPool() { }
+    private AshConfigPool()
+    {
+    }
 
     Dictionary<int, int> KeyMap { get; set; } = new();
     Dictionary<int, int> ModeMap { get; set; } = new();
 
-    public (Dictionary<int, int> keyMap, Dictionary<int, int> modeMap) GetAshConfigs()
+    public (Dictionary<int, int> keyMap, Dictionary<int, int> modeMap) GetAshConfigs(bool driverless = false)
     {
         var keyMap = new Dictionary<int, int>();
         var modeMap = new Dictionary<int, int>();
@@ -24,7 +26,7 @@ public class AshConfigPool
         {
             var willPress = AshKeyMap.Get(KeyMap[key]);
             var mode = ModeMap.GetValueOrDefault(key, 0);
-            keyMap[key] = willPress.DdCode;
+            keyMap[key] = driverless ? willPress.ScanCode : willPress.DdCode;
             modeMap[key] = mode;
         }
 

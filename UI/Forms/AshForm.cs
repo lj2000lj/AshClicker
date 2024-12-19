@@ -1,5 +1,7 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using AshClicker.Driver;
+using Microsoft.Win32;
 
 namespace AshClicker;
 
@@ -15,16 +17,31 @@ public partial class AshForm : Form
     private Dictionary<int, int> _keyMap = new();
     private Dictionary<int, int> _modeMap = new();
     private Dictionary<int, bool> pressedKeys = new();
+    private InterceptionControl ic;
+    private InterceptionClient icl;
 
     public AshForm()
     {
         InitializeComponent();
+        try
+        {
+            ic = new();
+        }
+        catch (Exception ex)
+        {
+            CustomMessageBox.Show(
+                $"没有找到驱动程序，请先安装喔！\n岚尘按键使用 Interception 驱动作为底层\n详情请参考: Interception 项目",
+                "https://github.com/oblitum/Interception/issues");
+            Console.WriteLine(ex.Message);
+            buttonSwitchEnable.Enabled = false;
+        }
+
+        icl = new InterceptionClient();
     }
 
     private void AshForm_Load(object sender, EventArgs e)
     {
         dd = new DdControl();
-        buttonSwitchEnable.Enabled = false;
         AshConfigPool.Instance.LoadToList(listView1);
     }
 
@@ -60,9 +77,39 @@ public partial class AshForm : Form
 
     private void PressKey(int ddcode, int press)
     {
-        dd.key(ddcode, 1);
-        AshStopwatch.PreciseDelay(press);
-        dd.key(ddcode, 2);
+        if (usingInterception)
+        {
+            /*var keyStroke = new KeyboardInputData
+            {
+                UnitId = 0, // 固定为 0
+                MakeCode = (ushort)ddcode, // 'A' 键的扫描码
+                Flags = 0x00, // 按下状态
+                Reserved = 0, // 固定为 0
+                ExtraInformation = 0 // 无附加信息
+            };
+            icl.SendKeyStroke(keyStroke);
+            AshStopwatch.PreciseDelay(press);
+            keyStroke.Flags = 0x01;
+            icl.SendKeyStroke(keyStroke);*/
+            var stroke = new InterceptionControl.Stroke
+            {
+                Key = new InterceptionControl.KeyStroke
+                {
+                    Code = (ushort)ddcode,
+                    State = 0x00 // 按下键
+                }
+            };
+            ic.Send(1, ref stroke);
+            AshStopwatch.PreciseDelay(press);
+            stroke.Key.State = 0x01; // 松开键
+            ic.Send(1, ref stroke);
+        }
+        else
+        {
+            dd.key(ddcode, 1);
+            AshStopwatch.PreciseDelay(press);
+            dd.key(ddcode, 2);
+        }
     }
 
     private void button1_Click(object sender, EventArgs e)
@@ -72,6 +119,7 @@ public partial class AshForm : Form
         if (ofd.ShowDialog() != DialogResult.OK) return;
 
         LoadDllFile(ofd.FileName);
+        usingInterception = false;
     }
 
     private void LoadDllFile(string dllfile)
@@ -107,7 +155,7 @@ public partial class AshForm : Form
         if (started)
         {
             AshStopwatch.UsePrecise = preciseDelay.Checked;
-            (_keyMap, _modeMap) = AshConfigPool.Instance.GetAshConfigs();
+            (_keyMap, _modeMap) = AshConfigPool.Instance.GetAshConfigs(usingInterception);
             foreach (var modes in _modeMap)
             {
                 if (modes.Value == 1)
@@ -207,5 +255,120 @@ public partial class AshForm : Form
         }
 
         base.WndProc(ref m);
+    }
+
+    private bool usingInterception = true;
+
+    private void buttonDriverless_Click(object sender, EventArgs e)
+    {
+        buttonLoadDriver.Text = "无驱动模式";
+        buttonLoadDriver.Enabled = false;
+        buttonSwitchEnable.Enabled = true;
+        usingInterception = true;
+    }
+
+    private void buttonInstallInterception_Click(object sender, EventArgs e)
+    {
+        MessageBox.Show(RunInstaller("/install"));
+        /*try
+        {
+            if (DriverInstaller.InstallDriver())
+            {
+                MessageBox.Show("驱动安装成功，请重启电脑");
+            }
+            else
+            {
+                MessageBox.Show("系统中可能已经存在 Interception 驱动，或者上一次的卸载尚未完成\n请在详细检查之后，重启电脑后再试");
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"驱动安装失败: {ex.Message}");
+        }*/
+    }
+
+    static string RunInstaller(string arguments)
+    {
+        // 创建临时文件来存储 Properties.Resources.installer
+        string tempInstallerPath = Path.Combine(Path.GetTempPath(), "installer.exe");
+        File.WriteAllBytes(tempInstallerPath, Properties.Resources.installer);
+
+        // 配置进程启动信息
+        ProcessStartInfo startInfo = new ProcessStartInfo
+        {
+            FileName = tempInstallerPath,
+            Arguments = arguments,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            Verb = "runas" // 以管理员权限运行
+        };
+
+        using (Process process = new Process { StartInfo = startInfo })
+        {
+            // 捕获输出
+            process.Start();
+            string output = process.StandardOutput.ReadToEnd();
+            process.WaitForExit();
+
+            // 删除临时文件
+            if (File.Exists(tempInstallerPath))
+            {
+                File.Delete(tempInstallerPath);
+            }
+
+            // 返回最后一行的输出
+            if (!string.IsNullOrEmpty(output))
+            {
+                string[] lines = output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+                return lines[^1]; // 返回最后一行
+            }
+            else
+            {
+                throw new Exception("No output received from installer.");
+            }
+        }
+    }
+
+    private void button1_Click_1(object sender, EventArgs e)
+    {
+        CreateRegistry("keyboard");
+        CreateRegistry("mouse");
+        MessageBox.Show(RunInstaller("/uninstall"));
+    }
+
+    static void CreateRegistry(string serviceName)
+    {
+        try
+        {
+            using (RegistryKey servicesKey =
+                   Registry.LocalMachine.OpenSubKey("System\\CurrentControlSet\\Services", true))
+            {
+                if (servicesKey == null)
+                {
+                    throw new Exception("Failed to open Services registry key.");
+                }
+
+                // 创建主项
+                using (RegistryKey serviceKey = servicesKey.CreateSubKey(serviceName))
+                {
+                    if (serviceKey == null)
+                    {
+                        throw new Exception($"Failed to create {serviceName} registry key.");
+                    }
+
+                    // 可选：创建 Security 和 Enum 子项
+                    serviceKey.CreateSubKey("Security")?.Close();
+                    serviceKey.CreateSubKey("Enum")?.Close();
+
+                    Console.WriteLine($"{serviceName} registry recreated successfully.");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error recreating {serviceName} registry: {ex.Message}");
+        }
     }
 }
