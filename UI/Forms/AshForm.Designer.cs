@@ -76,7 +76,7 @@ partial class AshForm
         label1.Name = "label1";
         label1.Size = new System.Drawing.Size(370, 105);
         label1.TabIndex = 2;
-        label1.Text = ("真不联网的公告：\r\n  - 当前版本 Alpha 0.0.1\r\n  - 能用就行，有问题请前来 GitHub 提 Issue\r\n  - 需要自行安装 DD 驱动并" + "加载对应的 Dll");
+        label1.Text = ("真不联网的公告：\r\n  - 当前版本 1.0.0\r\n  - 能用就行，有问题请前来 GitHub 提 Issue\r\n  - 需要自行安装 DD 驱动并加载对应的 " + "DLL");
         // 
         // label2
         // 
@@ -212,7 +212,7 @@ partial class AshForm
         Controls.Add(buttonSwitchEnable);
         Icon = ((System.Drawing.Icon)resources.GetObject("$this.Icon"));
         MaximizeBox = false;
-        Text = "岚尘按键（内部测试版）";
+        Text = "岚尘按键 | 能用就行";
         Load += AshForm_Load;
         ResumeLayout(false);
         PerformLayout();
