@@ -25,7 +25,7 @@ jobs:
         run: dotnet build --configuration Release
 
       - name: 发布应用程序
-        run: dotnet publish -c Release -o publish -p:PublishSingleFile=true --self-contained false
+        run: dotnet publish -c Release -o publish
 
       - name: 重命名文件
         run: |

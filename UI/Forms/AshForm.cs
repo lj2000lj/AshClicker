@@ -159,12 +159,12 @@ namespace AshClicker
             {
                 AshStopwatch.UsePrecise = preciseDelay.Checked;
                 AshConfigPool.Instance.GetAshConfigs(usingInterception, out _keyMap, out _modeMap);
-                foreach (var modes in _modeMap)
+                var modes = _modeMap.Where(m => m.Value == 1).ToList();
+
+                // No idea why, but with Fody enabled, foreach will throw an exception :(
+                for (var i = 0; i < modes.Count; i++)
                 {
-                    if (modes.Value == 1)
-                    {
-                        RegisterKey(modes.Key, 0);
-                    }
+                    RegisterKey(modes[i].Key, 0);
                 }
 
                 delay = Math.Max(int.Parse(textBox1.Text), 1);
