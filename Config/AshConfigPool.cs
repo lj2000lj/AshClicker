@@ -1,131 +1,134 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Text.Json;
+using System.Windows.Forms;
+using Newtonsoft.Json; // 引入 Newtonsoft.Json
 
-namespace AshClicker;
-
-public class AshConfigPool
+namespace AshClicker
 {
-    private static readonly Lazy<AshConfigPool> _instance = new(() => new AshConfigPool());
-    public static AshConfigPool Instance => _instance.Value;
-
-    private AshConfigPool()
+    public class AshConfigPool
     {
-    }
+        private static readonly Lazy<AshConfigPool> _instance = new Lazy<AshConfigPool>(() => new AshConfigPool());
+        public static AshConfigPool Instance => _instance.Value;
 
-    Dictionary<int, int> KeyMap { get; set; } = new();
-    Dictionary<int, int> ModeMap { get; set; } = new();
-
-    public (Dictionary<int, int> keyMap, Dictionary<int, int> modeMap) GetAshConfigs(bool driverless = false)
-    {
-        var keyMap = new Dictionary<int, int>();
-        var modeMap = new Dictionary<int, int>();
-
-        foreach (var key in KeyMap.Keys)
+        private AshConfigPool()
         {
-            var willPress = AshKeyMap.Get(KeyMap[key]);
-            var mode = ModeMap.GetValueOrDefault(key, 0);
-            keyMap[key] = driverless ? willPress.ScanCode : willPress.DdCode;
-            modeMap[key] = mode;
         }
 
-        return (keyMap, modeMap);
-    }
+        Dictionary<int, int> KeyMap { get; set; } = new Dictionary<int, int>();
+        Dictionary<int, int> ModeMap { get; set; } = new Dictionary<int, int>();
 
-    public void LoadToList(ListView listView)
-    {
-        LoadConfig();
-        foreach (var key in KeyMap.Keys)
+        public void GetAshConfigs(bool driverless, out Dictionary<int, int> outKeyMap,
+            out Dictionary<int, int> outModeMap)
         {
-            var userPress = AshKeyMap.Get(key);
-            var willPress = AshKeyMap.Get(KeyMap[key]);
-            var mode = ModeMap.GetValueOrDefault(key, 0);
-            var modeText = AshKeyMap.MapMode(mode);
-            listView.Items.Add(AshUtil.CreateKeyMappingItem(userPress, willPress, modeText, mode));
-        }
-    }
+            var keyMap = new Dictionary<int, int>();
+            var modeMap = new Dictionary<int, int>();
 
-    public void UpdateFromList(ListView listView)
-    {
-        KeyMap.Clear();
-        ModeMap.Clear();
-        var invalid = new HashSet<ListViewItem>();
-
-        foreach (ListViewItem item in listView.Items)
-        {
-            if (item.Tag is AshKeypress press)
+            foreach (var key in KeyMap.Keys)
             {
-                KeyMap[press.UserPress.VKey] = press.WillPress.VKey;
-                ModeMap[press.UserPress.VKey] = press.Mode;
+                var willPress = AshKeyMap.Get(KeyMap[key]);
+                var mode = ModeMap.GetValueOrDefault(key, 0);
+                keyMap[key] = driverless ? willPress.ScanCode : willPress.DdCode;
+                modeMap[key] = mode;
             }
-            else
+
+            outKeyMap = keyMap;
+            outModeMap = modeMap;
+        }
+
+        public void LoadToList(ListView listView)
+        {
+            LoadConfig();
+            foreach (var key in KeyMap.Keys)
             {
-                invalid.Add(item);
+                var userPress = AshKeyMap.Get(key);
+                var willPress = AshKeyMap.Get(KeyMap[key]);
+                var mode = ModeMap.GetValueOrDefault(key, 0);
+                var modeText = AshKeyMap.MapMode(mode);
+                listView.Items.Add(AshUtil.CreateKeyMappingItem(userPress, willPress, modeText, mode));
             }
         }
 
-        if (invalid.Count > 0)
+        public void UpdateFromList(ListView listView)
         {
-            MessageBox.Show("检测到错误配置，已删除错误的条目:(");
-        }
+            KeyMap.Clear();
+            ModeMap.Clear();
+            var invalid = new HashSet<ListViewItem>();
 
-        foreach (var listViewItem in invalid)
-        {
-            listView.Items.Remove(listViewItem);
-        }
-
-        SaveConfig();
-    }
-
-    private static readonly string ConfigFilePath = "AshConfig.json";
-
-    public void SaveConfig()
-    {
-        try
-        {
-            var configData = new { KeyMap, ModeMap };
-            var options = new JsonSerializerOptions { WriteIndented = true };
-            var json = JsonSerializer.Serialize(configData, options);
-            File.WriteAllText(ConfigFilePath, json);
-            Console.WriteLine($"Configuration saved to {ConfigFilePath}");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error saving configuration: {ex.Message}");
-        }
-    }
-
-    public void LoadConfig()
-    {
-        try
-        {
-            if (File.Exists(ConfigFilePath))
+            foreach (ListViewItem item in listView.Items)
             {
-                var json = File.ReadAllText(ConfigFilePath);
-                var configData = JsonSerializer.Deserialize<ConfigData>(json);
-
-                if (configData != null)
+                if (item.Tag is AshKeypress press)
                 {
-                    KeyMap = configData.KeyMap ?? new Dictionary<int, int>();
-                    ModeMap = configData.ModeMap ?? new Dictionary<int, int>();
-                    Console.WriteLine("Configuration loaded successfully.");
+                    KeyMap[press.UserPress.VKey] = press.WillPress.VKey;
+                    ModeMap[press.UserPress.VKey] = press.Mode;
+                }
+                else
+                {
+                    invalid.Add(item);
                 }
             }
-            else
+
+            if (invalid.Count > 0)
             {
-                Console.WriteLine("Configuration file not found. Using default settings.");
+                MessageBox.Show("检测到错误配置，已删除错误的条目:(");
+            }
+
+            foreach (var listViewItem in invalid)
+            {
+                listView.Items.Remove(listViewItem);
+            }
+
+            SaveConfig();
+        }
+
+        private static readonly string ConfigFilePath = "AshConfig.json";
+
+        public void SaveConfig()
+        {
+            try
+            {
+                var configData = new ConfigData { KeyMap = KeyMap, ModeMap = ModeMap };
+                var json = JsonConvert.SerializeObject(configData, Formatting.Indented);
+                File.WriteAllText(ConfigFilePath, json);
+                Console.WriteLine($"Configuration saved to {ConfigFilePath}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error saving configuration: {ex.Message}");
             }
         }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error loading configuration: {ex.Message}");
-        }
-    }
 
-    private class ConfigData
-    {
-        public Dictionary<int, int> KeyMap { get; set; }
-        public Dictionary<int, int> ModeMap { get; set; }
+        public void LoadConfig()
+        {
+            try
+            {
+                if (File.Exists(ConfigFilePath))
+                {
+                    var json = File.ReadAllText(ConfigFilePath);
+                    var configData = JsonConvert.DeserializeObject<ConfigData>(json);
+
+                    if (configData != null)
+                    {
+                        KeyMap = configData.KeyMap ?? new Dictionary<int, int>();
+                        ModeMap = configData.ModeMap ?? new Dictionary<int, int>();
+                        Console.WriteLine("Configuration loaded successfully.");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("Configuration file not found. Using default settings.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error loading configuration: {ex.Message}");
+            }
+        }
+
+        private class ConfigData
+        {
+            public Dictionary<int, int> KeyMap { get; set; }
+            public Dictionary<int, int> ModeMap { get; set; }
+        }
     }
 }

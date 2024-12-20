@@ -1,99 +1,104 @@
+using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows.Forms;
 
-namespace AshClicker;
-
-public class AshTimer
+namespace AshClicker
 {
-    public static readonly AshTimer Instance = new AshTimer();
-
-    private Task? _clickerTask = null;
-    private static readonly CancellationTokenSource Source = new CancellationTokenSource();
-    private readonly object _lockObject = new object();
-
-    public Action Func { get; set; } = () => { };
-    public int Delay { get; set; } = 1;
-
-    private bool _enabled = false;
-
-    public bool Enabled
+    public class AshTimer
     {
-        get => _enabled;
-        set
+        public static readonly AshTimer Instance = new AshTimer();
+
+        private Task _clickerTask = null;
+        private static readonly CancellationTokenSource Source = new CancellationTokenSource();
+        private readonly object _lockObject = new object();
+
+        public Action Func { get; set; } = () => { };
+        public int Delay { get; set; } = 1;
+
+        private bool _enabled = false;
+
+        public bool Enabled
         {
-            _enabled = value;
-            if (_enabled)
+            get => _enabled;
+            set
             {
-                Start();
-            }
-            else
-            {
-                Stop();
+                _enabled = value;
+                if (_enabled)
+                {
+                    Start();
+                }
+                else
+                {
+                    Stop();
+                }
             }
         }
-    }
 
-    private AshTimer()
-    {
-    }
-
-    [DllImport("winmm.dll")]
-    public static extern uint timeBeginPeriod(uint uMilliseconds);
-
-    [DllImport("winmm.dll")]
-    public static extern uint timeEndPeriod(uint uMilliseconds);
-
-    public void Start()
-    {
-        if (!Enabled)
+        private AshTimer()
         {
-            Enabled = true;
-            return;
         }
 
-        timeBeginPeriod(1);
-        lock (_lockObject)
+        [DllImport("winmm.dll")]
+        public static extern uint timeBeginPeriod(uint uMilliseconds);
+
+        [DllImport("winmm.dll")]
+        public static extern uint timeEndPeriod(uint uMilliseconds);
+
+        public void Start()
         {
-            if (_clickerTask != null && !_clickerTask.IsCompleted)
+            if (!Enabled)
             {
-                MessageBox.Show("按键已经开启了");
+                Enabled = true;
                 return;
             }
 
-            _clickerTask = Task.Run(() =>
+            timeBeginPeriod(1);
+            lock (_lockObject)
             {
-                while (!Source.Token.IsCancellationRequested && Enabled)
+                if (_clickerTask != null && !_clickerTask.IsCompleted)
                 {
-                    Func.Invoke();
-                    AshStopwatch.PreciseDelay(Delay);
+                    MessageBox.Show("按键已经开启了");
+                    return;
                 }
-            }, Source.Token);
-        }
-    }
 
-    public void Stop()
-    {
-        if (Enabled)
-        {
-            Enabled = false;
-            return;
+                _clickerTask = Task.Run(() =>
+                {
+                    while (!Source.Token.IsCancellationRequested && Enabled)
+                    {
+                        Func.Invoke();
+                        AshStopwatch.PreciseDelay(Delay);
+                    }
+                }, Source.Token);
+            }
         }
 
-        timeEndPeriod(1);
-        lock (_lockObject)
+        public void Stop()
         {
-            if (_clickerTask != null)
+            if (Enabled)
             {
-                try
+                Enabled = false;
+                return;
+            }
+
+            timeEndPeriod(1);
+            lock (_lockObject)
+            {
+                if (_clickerTask != null)
                 {
-                    _clickerTask.Wait();
-                }
-                catch (AggregateException)
-                {
-                }
-                finally
-                {
-                    _clickerTask = null;
+                    try
+                    {
+                        _clickerTask.Wait();
+                    }
+                    catch (AggregateException)
+                    {
+                    }
+                    finally
+                    {
+                        _clickerTask = null;
+                    }
                 }
             }
         }

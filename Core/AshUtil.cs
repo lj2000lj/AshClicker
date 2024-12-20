@@ -1,22 +1,26 @@
-namespace AshClicker;
+using System;
+using System.Windows.Forms;
 
-public class AshUtil
+namespace AshClicker
 {
-    public static ListViewItem CreateKeyMappingItem(AshKey userPress, AshKey willPress, string modeText, int mode)
+    public class AshUtil
     {
-        if (userPress == null || willPress == null)
+        public static ListViewItem CreateKeyMappingItem(AshKey userPress, AshKey willPress, string modeText, int mode)
         {
-            throw new ArgumentNullException("userPress 和 willPress 都不能为 null。");
+            if (userPress == null || willPress == null)
+            {
+                throw new ArgumentNullException("userPress 和 willPress 都不能为 null。");
+            }
+
+            // 创建一个 ListViewItem
+            var item = new ListViewItem(userPress.Description);
+            item.SubItems.Add(willPress.Description);
+            item.SubItems.Add(modeText);
+
+            // 绑定自定义 Tag
+            item.Tag = new AshKeypress(userPress, willPress, mode);
+
+            return item;
         }
-
-        // 创建一个 ListViewItem
-        var item = new ListViewItem(userPress.Description);
-        item.SubItems.Add(willPress.Description);
-        item.SubItems.Add(modeText);
-
-        // 绑定自定义 Tag
-        item.Tag = new AshKeypress(userPress, willPress, mode);
-
-        return item;
     }
 }

@@ -21,15 +21,19 @@ namespace AshClicker
             try
             {
                 // 获取嵌入资源流
-                using var resourceStream = Assembly.GetExecutingAssembly().GetManifestResourceStream(resourcePath);
-                if (resourceStream == null)
+                using (var resourceStream = Assembly.GetExecutingAssembly().GetManifestResourceStream(resourcePath))
                 {
-                    throw new InvalidOperationException($"Embedded resource '{resourcePath}' not found.");
-                }
+                    if (resourceStream == null)
+                    {
+                        throw new InvalidOperationException($"Embedded resource '{resourcePath}' not found.");
+                    }
 
-                // 创建临时文件并写入资源数据
-                using var fileStream = new FileStream(tempFilePath, FileMode.Create, FileAccess.Write);
-                resourceStream.CopyTo(fileStream);
+                    // 创建临时文件并写入资源数据
+                    using (var fileStream = new FileStream(tempFilePath, FileMode.Create, FileAccess.Write))
+                    {
+                        resourceStream.CopyTo(fileStream);
+                    }
+                }
 
                 return tempFilePath;
             }

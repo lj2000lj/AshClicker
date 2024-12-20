@@ -1,66 +1,70 @@
-namespace AshClicker;
+using System.Drawing;
 
-using System;
-using System.Diagnostics;
-using System.Windows.Forms;
-
-public class CustomMessageBox : Form
+namespace AshClicker
 {
-    private Button btnOk;
-    private LinkLabel linkLabel;
+    using System;
+    using System.Diagnostics;
+    using System.Windows.Forms;
 
-    public CustomMessageBox(string message, string url)
+    public class CustomMessageBox : Form
     {
-        Text = "消息";
-        Width = 400;
-        Height = 200;
-        StartPosition = FormStartPosition.CenterScreen;
+        private Button btnOk;
+        private LinkLabel linkLabel;
 
-        linkLabel = new LinkLabel
+        public CustomMessageBox(string message, string url)
         {
-            Text = message,
-            AutoSize = true,
-            Location = new Point(20, 20),
-        };
-        linkLabel.LinkClicked += (sender, e) => Process.Start(new ProcessStartInfo
-        {
-            FileName = url,
-            UseShellExecute = true
-        });
+            Text = "消息";
+            Width = 400;
+            Height = 200;
+            StartPosition = FormStartPosition.CenterScreen;
 
-        btnOk = new Button
-        {
-            Text = "好的",
-            DialogResult = DialogResult.OK,
-            Location = new System.Drawing.Point(150, 100),
-            AutoSize = true
-        };
+            linkLabel = new LinkLabel
+            {
+                Text = message,
+                AutoSize = true,
+                Location = new Point(20, 20),
+            };
+            linkLabel.LinkClicked += (sender, e) => Process.Start(new ProcessStartInfo
+            {
+                FileName = url,
+                UseShellExecute = true
+            });
 
-        Controls.Add(linkLabel);
-        Controls.Add(btnOk);
-    }
+            btnOk = new Button
+            {
+                Text = "好的",
+                DialogResult = DialogResult.OK,
+                Location = new System.Drawing.Point(150, 100),
+                AutoSize = true
+            };
 
-    public static void Show(string message, string url)
-    {
-        using (var form = new CustomMessageBox(message, url))
-        {
-            form.ShowDialog();
+            Controls.Add(linkLabel);
+            Controls.Add(btnOk);
         }
-    }
 
-    /// <summary>
-    /// Required method for Designer support - do not modify
-    /// the contents of this method with the code editor.
-    /// </summary>
-    private void InitializeComponent()
-    {
-        System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(CustomMessageBox));
-        SuspendLayout();
-        // 
-        // CustomMessageBox
-        // 
-        ClientSize = new System.Drawing.Size(282, 253);
-        Icon = ((System.Drawing.Icon)resources.GetObject("$this.Icon"));
-        ResumeLayout(false);
+        public static void Show(string message, string url)
+        {
+            using (var form = new CustomMessageBox(message, url))
+            {
+                form.ShowDialog();
+            }
+        }
+
+        /// <summary>
+        /// Required method for Designer support - do not modify
+        /// the contents of this method with the code editor.
+        /// </summary>
+        private void InitializeComponent()
+        {
+            this.Icon = Properties.Resources.ashlogo;
+            System.ComponentModel.ComponentResourceManager resources =
+                new System.ComponentModel.ComponentResourceManager(typeof(CustomMessageBox));
+            SuspendLayout();
+            // 
+            // CustomMessageBox
+            // 
+            ClientSize = new System.Drawing.Size(282, 253);
+            ResumeLayout(false);
+        }
     }
 }

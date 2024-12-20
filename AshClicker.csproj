@@ -2,15 +2,17 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net6.0-windows7.0</TargetFramework>
-    <Nullable>enable</Nullable>
+    <TargetFramework>net461</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
-    <ImplicitUsings>enable</ImplicitUsings>
+    <ImplicitUsings>disable</ImplicitUsings>
   </PropertyGroup>
   <PropertyGroup>
     <ApplicationManifest>Assets/Config/app.manifest</ApplicationManifest>
     <StartupObject>AshClicker.Program</StartupObject>
     <ApplicationIcon>Assets/Icons/logo.ico</ApplicationIcon>
+  </PropertyGroup>
+  <PropertyGroup>
+    <GenerateResourceUsePreserializedResources>true</GenerateResourceUsePreserializedResources>
   </PropertyGroup>
   <ItemGroup>
     <Compile Update="Properties\Resources.Designer.cs">
@@ -21,9 +23,7 @@
     <Compile Update="UI\Forms\AshForm.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Update="UI\Forms\KeySelectionFrame.cs">
-      <SubType>Form</SubType>
-    </Compile>
+    <Compile Update="UI\Forms\KeySelectionFrame.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include=".github\workflows\build.yml" />
@@ -37,5 +37,9 @@
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="System.Resources.Extensions" Version="6.0.0" />
   </ItemGroup>
 </Project>

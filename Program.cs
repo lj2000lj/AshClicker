@@ -1,3 +1,7 @@
+using System;
+using System.Text;
+using System.Windows.Forms;
+
 namespace AshClicker
 {
     internal static class Program
@@ -8,9 +12,8 @@ namespace AshClicker
         [STAThread]
         static void Main()
         {
-            // To customize application configuration such as set high DPI settings or default font,
-            // see https://aka.ms/applicationconfiguration.
-            ApplicationConfiguration.Initialize();
+            Application.EnableVisualStyles();
+            Application.SetCompatibleTextRenderingDefault(false);
             Application.Run(new AshForm());
         }
     }
