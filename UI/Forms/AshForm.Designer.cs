@@ -51,6 +51,7 @@ namespace AshClicker
             this.buttonDriverless = new System.Windows.Forms.Button();
             this.buttonInstallInterception = new System.Windows.Forms.Button();
             this.button1 = new System.Windows.Forms.Button();
+            this.linkLabel1 = new System.Windows.Forms.LinkLabel();
             this.SuspendLayout();
             // 
             // buttonLoadDriver
@@ -80,7 +81,7 @@ namespace AshClicker
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(370, 105);
             this.label1.TabIndex = 2;
-            this.label1.Text = "真不联网的公告：\r\n  - 当前版本 1.1.1\r\n  - 能用就行，有问题请前来 GitHub 提 Issue";
+            this.label1.Text = "真不联网的公告：\r\n  - 当前版本 %version%\r\n  - 能用就行，有问题请前来 GitHub 提 Issue\r\n  - 基于 GPL-3.0 开源协议" + "发布，项目地址：";
             // 
             // label2
             // 
@@ -227,12 +228,23 @@ namespace AshClicker
             this.button1.UseVisualStyleBackColor = true;
             this.button1.Click += new System.EventHandler(this.button1_Click_1);
             // 
+            // linkLabel1
+            // 
+            this.linkLabel1.Cursor = System.Windows.Forms.Cursors.Default;
+            this.linkLabel1.Location = new System.Drawing.Point(55, 69);
+            this.linkLabel1.Name = "linkLabel1";
+            this.linkLabel1.Size = new System.Drawing.Size(322, 23);
+            this.linkLabel1.TabIndex = 16;
+            this.linkLabel1.TabStop = true;
+            this.linkLabel1.Text = "https://github.com/lj2000lj/AshClicker/";
+            // 
             // AshForm
             // 
             this.AllowDrop = true;
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(405, 466);
+            this.Controls.Add(this.linkLabel1);
             this.Controls.Add(this.button1);
             this.Controls.Add(this.buttonInstallInterception);
             this.Controls.Add(this.preciseDelay);
@@ -258,6 +270,8 @@ namespace AshClicker
             this.ResumeLayout(false);
             this.PerformLayout();
         }
+
+        private System.Windows.Forms.LinkLabel linkLabel1;
 
         private System.Windows.Forms.Button button1;
 

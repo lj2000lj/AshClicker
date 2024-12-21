@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using AshClicker.Driver;
@@ -27,6 +28,14 @@ namespace AshClicker
 
         public AshForm()
         {
+            var version = Assembly.GetExecutingAssembly().GetName().Version;
+            Console.WriteLine($"Version: {version}");
+
+            var infoVersion = Assembly.GetExecutingAssembly()
+                .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+                ?.InformationalVersion;
+
+            Console.WriteLine($"Informational Version: {infoVersion}");
             InitializeComponent();
             try
             {
@@ -34,18 +43,68 @@ namespace AshClicker
             }
             catch (Exception ex)
             {
-                CustomMessageBox.Show(
-                    $"没有找到驱动程序，请先安装喔！\n岚尘按键使用 Interception 驱动作为底层\n详情请参考: Interception 项目",
-                    "https://github.com/oblitum/Interception/issues");
                 Console.WriteLine(ex.Message);
+                // 定义日志文件路径
+                var logFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "error_log.txt");
+
+                // 写入日志文件
+                File.AppendAllText(logFilePath,
+                    $"[{DateTime.Now}] Exception: {ex.Message}{Environment.NewLine}{ex.StackTrace}{Environment.NewLine}");
+                try
+                {
+                    string mouseStatus = RunScCommand("sc query mouse.sys");
+                    string keyboardStatus = RunScCommand("sc query keyboard.sys");
+
+                    File.AppendAllText(logFilePath, $"[{DateTime.Now}] SC Query Results:{Environment.NewLine}");
+                    File.AppendAllText(logFilePath,
+                        $"Mouse.sys Status:{Environment.NewLine}{mouseStatus}{Environment.NewLine}");
+                    File.AppendAllText(logFilePath,
+                        $"Keyboard.sys Status:{Environment.NewLine}{keyboardStatus}{Environment.NewLine}");
+                }
+                catch (Exception scEx)
+                {
+                    File.AppendAllText(logFilePath,
+                        $"[{DateTime.Now}] Error querying SC status: {scEx.Message}{Environment.NewLine}");
+                }
+
                 buttonSwitchEnable.Enabled = false;
+                MessageBox.Show("还没有安装驱动喔！请记得先点击安装驱动！");
             }
+        }
+
+        string RunScCommand(string command)
+        {
+            Process process = new Process();
+            process.StartInfo.FileName = "cmd.exe";
+            process.StartInfo.Arguments = $"/c {command}";
+            process.StartInfo.RedirectStandardOutput = true;
+            process.StartInfo.RedirectStandardError = true;
+            process.StartInfo.UseShellExecute = false;
+            process.StartInfo.CreateNoWindow = true;
+
+            process.Start();
+            string output = process.StandardOutput.ReadToEnd();
+            string error = process.StandardError.ReadToEnd();
+            process.WaitForExit();
+
+            if (!string.IsNullOrWhiteSpace(error))
+            {
+                throw new Exception($"Error running command: {error}");
+            }
+
+            return output;
         }
 
         private void AshForm_Load(object sender, EventArgs e)
         {
             dd = new DdControl();
             AshConfigPool.Instance.LoadToList(listView1);
+            label1.Text = label1.Text.Replace("%version%", ThisAssembly.Git.Tag);
+            linkLabel1.LinkClicked += (s, evt) => Process.Start(new ProcessStartInfo
+            {
+                FileName = "https://github.com/lj2000lj/AshClicker/",
+                UseShellExecute = true
+            });
         }
 
         [DllImport("user32.dll")]
@@ -272,22 +331,56 @@ namespace AshClicker
 
         private void buttonInstallInterception_Click(object sender, EventArgs e)
         {
-            MessageBox.Show(RunInstaller("/install"));
-            /*try
+            var dialogResult = MessageBox.Show(
+                "即将安装 Interception 驱动。\n\n" +
+                "该驱动基于 LGPL 协议发布。\n" +
+                "项目地址: https://github.com/oblitum/Interception/\n\n" +
+                "此驱动用于模拟键盘和鼠标输入，可能影响输入设备的行为。\n\n" +
+                "是否继续？",
+                "确认安装",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning);
+
+            if (dialogResult == DialogResult.No)
             {
-                if (DriverInstaller.InstallDriver())
-                {
-                    MessageBox.Show("驱动安装成功，请重启电脑");
-                }
-                else
-                {
-                    MessageBox.Show("系统中可能已经存在 Interception 驱动，或者上一次的卸载尚未完成\n请在详细检查之后，重启电脑后再试");
-                }
+                return;
             }
-            catch (Exception ex)
+
+            var result = RunInstaller("/install");
+            if (result.Contains("successfully installed"))
             {
-                MessageBox.Show($"驱动安装失败: {ex.Message}");
-            }*/
+                RunScCommand(
+                    "sc create keyboard type= kernel start= auto binPath= \"C:\\Windows\\System32\\drivers\\keyboard.sys\"");
+                RunScCommand(
+                    "sc create mouse type= kernel start= auto binPath= \"C:\\Windows\\System32\\drivers\\mouse.sys\"");
+                RunScCommand(
+                    "sc start keyboard");
+                RunScCommand(
+                    "sc start mouse");
+                MessageBox.Show(
+                    "安装成功，但是你应该需要重启一下电脑才能使用喔！\n\n" +
+                    "提示：如果长时间不使用该驱动，建议及时卸载以减少安全隐患。",
+                    "安装完成",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+            }
+            else if (result.Contains("Could not write"))
+            {
+                MessageBox.Show(
+                    "文件写入失败，可能是驱动已经安装过。\n\n" +
+                    "请尝试重启电脑后重新运行程序，并检查按键功能是否正常开启。",
+                    "安装失败",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+            }
+            else
+            {
+                MessageBox.Show(
+                    "操作失败，详细信息如下：\n\n" + result,
+                    "错误",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
         }
 
         static string RunInstaller(string arguments)
@@ -338,7 +431,24 @@ namespace AshClicker
         {
             CreateRegistry("keyboard");
             CreateRegistry("mouse");
-            MessageBox.Show(RunInstaller("/uninstall"));
+            var result = RunInstaller("/uninstall");
+            if (result.Contains("uninstalled"))
+            {
+                MessageBox.Show(
+                    "卸载成功！请重启电脑以完成卸载过程。\n\n" +
+                    "提示：如果需要重新安装驱动，请重启后再运行。",
+                    "卸载完成",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+            }
+            else
+            {
+                MessageBox.Show(
+                    "操作失败，详细信息如下：\n\n" + result,
+                    "错误",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
         }
 
         static void CreateRegistry(string serviceName)
