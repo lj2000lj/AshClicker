@@ -313,6 +313,14 @@ namespace AshClicker
                 if (_modeMap.GetValueOrDefault(vKey, 0) == 1)
                 {
                     pressedKeys[vKey] = !pressedKeys[vKey];
+                    if (pressedKeys[vKey] && soundEffect.Checked)
+                    {
+                        System.Media.SystemSounds.Beep.Play();
+                    }
+                    else if (soundEffect.Checked)
+                    {
+                        System.Media.SystemSounds.Hand.Play();
+                    }
                 }
             }
 

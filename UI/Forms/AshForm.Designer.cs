@@ -52,6 +52,7 @@ namespace AshClicker
             this.buttonInstallInterception = new System.Windows.Forms.Button();
             this.button1 = new System.Windows.Forms.Button();
             this.linkLabel1 = new System.Windows.Forms.LinkLabel();
+            this.soundEffect = new System.Windows.Forms.CheckBox();
             this.SuspendLayout();
             // 
             // buttonLoadDriver
@@ -190,7 +191,7 @@ namespace AshClicker
             // 
             this.preciseDelay.Checked = true;
             this.preciseDelay.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.preciseDelay.Location = new System.Drawing.Point(237, 95);
+            this.preciseDelay.Location = new System.Drawing.Point(285, 95);
             this.preciseDelay.Name = "preciseDelay";
             this.preciseDelay.Size = new System.Drawing.Size(104, 24);
             this.preciseDelay.TabIndex = 12;
@@ -238,12 +239,24 @@ namespace AshClicker
             this.linkLabel1.TabStop = true;
             this.linkLabel1.Text = "https://github.com/lj2000lj/AshClicker/";
             // 
+            // soundEffect
+            // 
+            this.soundEffect.Checked = true;
+            this.soundEffect.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.soundEffect.Location = new System.Drawing.Point(175, 95);
+            this.soundEffect.Name = "soundEffect";
+            this.soundEffect.Size = new System.Drawing.Size(104, 24);
+            this.soundEffect.TabIndex = 17;
+            this.soundEffect.Text = "音效提示";
+            this.soundEffect.UseVisualStyleBackColor = true;
+            // 
             // AshForm
             // 
             this.AllowDrop = true;
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(405, 466);
+            this.Controls.Add(this.soundEffect);
             this.Controls.Add(this.linkLabel1);
             this.Controls.Add(this.button1);
             this.Controls.Add(this.buttonInstallInterception);
@@ -270,6 +283,8 @@ namespace AshClicker
             this.ResumeLayout(false);
             this.PerformLayout();
         }
+
+        private System.Windows.Forms.CheckBox soundEffect;
 
         private System.Windows.Forms.LinkLabel linkLabel1;
 
