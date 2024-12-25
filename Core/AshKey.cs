@@ -1,3 +1,5 @@
+using System.Runtime.InteropServices;
+
 namespace AshClicker
 {
     public class AshKey
@@ -8,12 +10,15 @@ namespace AshClicker
         public int ScanCode { get; }
         public string Description { get; }
 
-        public AshKey(string keyName, int vKey, int ddCode, int scanCode, string description)
+        [DllImport("user32.dll")]
+        static extern uint MapVirtualKey(uint uCode, uint uMapType);
+
+        public AshKey(string keyName, int vKey, int ddCode, string description)
         {
             KeyName = keyName;
             VKey = vKey;
             DdCode = ddCode;
-            ScanCode = scanCode;
+            ScanCode = (int)MapVirtualKey((uint)vKey, 0);
             Description = description;
         }
     }
