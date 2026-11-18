@@ -15,226 +15,236 @@ namespace AshClicker
 {
     public partial class AshForm : Form
     {
-        private const int ASH_HOTKEY_ID = 12489;
-        private DdControl dd;
-        private bool started;
-        private bool DDLoaded;
-        private static readonly string defaultValue = "(添加)";
-        private Dictionary<int, int> _keyMap = new Dictionary<int, int>();
-        private Dictionary<int, int> _modeMap = new Dictionary<int, int>();
-        private Dictionary<int, bool> pressedKeys = new Dictionary<int, bool>();
-        private InterceptionControl ic;
-        private InterceptionClient icl;
+        private const int HotKeyIdBase = 12489;
+        private const int WmHotKey = 0x0312;
+        private const int DefaultPressDelay = 15;
+        private const int DefaultReleaseDelay = 1;
+
+        private readonly Dictionary<int, bool> _toggledKeys = new Dictionary<int, bool>();
+        private List<AshRuntimeMapping> _runtimeMappings = new List<AshRuntimeMapping>();
+        private DdControl _ddControl;
+        private InterceptionControl _interceptionControl;
+        private SoundPlayer _startSound;
+        private SoundPlayer _stopSound;
+        private IconToolTips _iconToolTips;
+        private bool _isRunning;
+        private bool _useInterception = true;
 
         public AshForm()
         {
-            var version = Assembly.GetExecutingAssembly().GetName().Version;
-            Console.WriteLine($"Version: {version}");
-
-            var infoVersion = Assembly.GetExecutingAssembly()
-                .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
-                ?.InformationalVersion;
-
-            Console.WriteLine($"Informational Version: {infoVersion}");
             InitializeComponent();
+
             try
             {
-                ic = new InterceptionControl();
+                _interceptionControl = new InterceptionControl();
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.Message);
-                // 定义日志文件路径
-                var logFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "error_log.txt");
-
-                // 写入日志文件
-                File.AppendAllText(logFilePath,
-                    $"[{DateTime.Now}] Exception: {ex.Message}{Environment.NewLine}{ex.StackTrace}{Environment.NewLine}");
-                try
-                {
-                    string mouseStatus = RunScCommand("sc query mouse.sys");
-                    string keyboardStatus = RunScCommand("sc query keyboard.sys");
-
-                    File.AppendAllText(logFilePath, $"[{DateTime.Now}] SC Query Results:{Environment.NewLine}");
-                    File.AppendAllText(logFilePath,
-                        $"Mouse.sys Status:{Environment.NewLine}{mouseStatus}{Environment.NewLine}");
-                    File.AppendAllText(logFilePath,
-                        $"Keyboard.sys Status:{Environment.NewLine}{keyboardStatus}{Environment.NewLine}");
-                }
-                catch (Exception scEx)
-                {
-                    File.AppendAllText(logFilePath,
-                        $"[{DateTime.Now}] Error querying SC status: {scEx.Message}{Environment.NewLine}");
-                }
-
-                buttonSwitchEnable.Enabled = false;
-                MessageBox.Show("还没有安装驱动喔！请记得先点击安装驱动！");
+                LogDriverLoadFailure(ex);
+                toggleButton.Enabled = false;
+                SetStatus(false, "驱动未就绪");
+                MessageBox.Show("尚未检测到可用驱动，请先安装驱动并重启电脑。", "驱动未就绪",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         }
 
-        string RunScCommand(string command)
+        private void ConfigureIcons()
         {
-            Process process = new Process();
-            process.StartInfo.FileName = "cmd.exe";
-            process.StartInfo.Arguments = $"/c {command}";
-            process.StartInfo.RedirectStandardOutput = true;
-            process.StartInfo.RedirectStandardError = true;
-            process.StartInfo.UseShellExecute = false;
-            process.StartInfo.CreateNoWindow = true;
-
-            process.Start();
-            string output = process.StandardOutput.ReadToEnd();
-            string error = process.StandardError.ReadToEnd();
-            process.WaitForExit();
-
-            if (!string.IsNullOrWhiteSpace(error))
-            {
-                throw new Exception($"Error running command: {error}");
-            }
-
-            return output;
+            _iconToolTips = new IconToolTips(components);
+            SetRunIcon(false);
+            _iconToolTips.SetIcon(installDriverButton, "\uE896", "↓", "安装 Interception 驱动",
+                "安装完成后重启 Windows。");
+            _iconToolTips.SetIcon(uninstallDriverButton, "\uE898", "↑", "卸载 Interception 驱动",
+                "卸载前会要求确认，重启后生效。");
+            _iconToolTips.SetIcon(loadDdDriverButton, "\uE8B7", "▣", "加载 DD 驱动");
+            _iconToolTips.SetIcon(useInterceptionButton, "\uE765", "⌨", "切换到 Interception");
+            _iconToolTips.SetIcon(githubButton, "\uED15", "↗", "在 GitHub 查看项目或反馈问题");
+            _iconToolTips.SetIcon(voiceLicenseButton, "\uE8A5", "▤", "查看 VOICEVOX 音源使用条款");
+            _iconToolTips.SetIcon(addMappingButton, "\uE710", "+", "添加按键映射");
+            _iconToolTips.SetIcon(editMappingButton, "\uE70F", "✎", "编辑所选映射");
+            _iconToolTips.SetIcon(deleteMappingButton, "\uE74D", "×", "删除所选映射");
+            _iconToolTips.SetIcon(preciseDelayCheckBox, "\uE916", "◷", "精确延迟",
+                "提高计时精度，可能增加 CPU 占用。");
+            _iconToolTips.SetIcon(soundEffectCheckBox, "\uE767", "♪", "音效提示",
+                "切换按键映射时播放提示音。");
+            _iconToolTips.SetIcon(highPerformanceCheckBox, "\uE945", "ϟ", "高性能发送（实验性）",
+                "复用 Interception 的发送缓冲区。");
+            _iconToolTips.Describe(pressDelayNumeric, "连发间隔（毫秒）", "控制两次调度之间的最短等待。");
+            _iconToolTips.Describe(releaseDelayNumeric, "按住时间（毫秒）", "适用于未单独设置按住时间的步骤。");
+            _iconToolTips.SetHelp(timingHelpButton, "节奏设置说明",
+                "连发间隔控制调度频率。按住时间控制每次发键从按下到松开的时长。");
+            UpdateMappingActions();
         }
 
-        private SoundPlayer _start;
-        private SoundPlayer _stop;
+        private void SetRunIcon(bool running)
+        {
+            if (running)
+            {
+                _iconToolTips.SetIcon(toggleButton, "\uE71A", "■", "停止连发");
+            }
+            else
+            {
+                _iconToolTips.SetIcon(toggleButton, "\uE768", "▶", "启动连发",
+                    "启动后使用映射里的触发键。");
+            }
+        }
+
+        private static string RunScCommand(string command)
+        {
+            using (var process = new Process())
+            {
+                process.StartInfo.FileName = "cmd.exe";
+                process.StartInfo.Arguments = $"/c {command}";
+                process.StartInfo.RedirectStandardOutput = true;
+                process.StartInfo.RedirectStandardError = true;
+                process.StartInfo.UseShellExecute = false;
+                process.StartInfo.CreateNoWindow = true;
+                process.Start();
+
+                var output = process.StandardOutput.ReadToEnd();
+                var error = process.StandardError.ReadToEnd();
+                process.WaitForExit();
+
+                if (!string.IsNullOrWhiteSpace(error))
+                {
+                    throw new InvalidOperationException($"命令执行失败: {error}");
+                }
+
+                return output;
+            }
+        }
+
         private void AshForm_Load(object sender, EventArgs e)
         {
-            dd = new DdControl();
-            
+            _ddControl = new DdControl();
+
             using (var stream = new MemoryStream(Resources.start))
             {
-                _start = new SoundPlayer(stream);
-                _start.Load();
+                _startSound = new SoundPlayer(stream);
+                _startSound.Load();
             }
-            
+
             using (var stream = new MemoryStream(Resources.stop))
             {
-                _stop = new SoundPlayer(stream);
-                _stop.Load();
+                _stopSound = new SoundPlayer(stream);
+                _stopSound.Load();
             }
+
             using (var stream = new MemoryStream(Resources.silence))
             {
                 new SoundPlayer(stream).PlaySync();
             }
 
-            
-            AshConfigPool.Instance.LoadToList(listView1);
+            AshConfigPool.Instance.LoadConfig();
             var pressDelay = AshConfigPool.Instance.PressDelay;
             var releaseDelay = AshConfigPool.Instance.ReleaseDelay;
-            textBox1.Text = (pressDelay > 0) ? pressDelay.ToString() : "15";
-            AshConfigPool.Instance.PressDelay = pressDelay > 0 ? pressDelay : 15;
-            textBox2.Text = (releaseDelay > 0) ? releaseDelay.ToString() : "1";
-            AshConfigPool.Instance.ReleaseDelay = releaseDelay > 0 ? releaseDelay : 1;
-
-            label1.Text = label1.Text.Replace("%version%", ThisAssembly.Git.Tag);
-            linkLabel1.LinkClicked += (s, evt) => Process.Start(new ProcessStartInfo
-            {
-                FileName = "https://github.com/lj2000lj/AshClicker/",
-                UseShellExecute = true
-            });
-            linkLabel2.LinkClicked += (s, evt) => Process.Start(new ProcessStartInfo
-            {
-                FileName = "https://zunko.jp/con_ongen_kiyaku.html",
-                UseShellExecute = true
-            });
+            AshConfigPool.Instance.PressDelay = pressDelay > 0 ? pressDelay : DefaultPressDelay;
+            AshConfigPool.Instance.ReleaseDelay = releaseDelay > 0 ? releaseDelay : DefaultReleaseDelay;
+            pressDelayNumeric.Value = AshConfigPool.Instance.PressDelay;
+            releaseDelayNumeric.Value = AshConfigPool.Instance.ReleaseDelay;
+            highPerformanceCheckBox.Checked = AshConfigPool.Instance.UseHighPerformanceInput;
+            UpdateVersionLabel();
+            RefreshMappingList();
         }
 
         [DllImport("user32.dll")]
         public static extern short GetAsyncKeyState(int vKey);
 
-        [DllImport("winmm.dll")]
-        public static extern uint timeBeginPeriod(uint uMilliseconds);
-
-        [DllImport("winmm.dll")]
-        public static extern uint timeEndPeriod(uint uMilliseconds);
-
-        private void tick()
+        private void ProcessMappings()
         {
-            if (!started) return;
+            if (!_isRunning) return;
 
-            foreach (var kvp in _keyMap)
+            var now = Environment.TickCount & int.MaxValue;
+            foreach (var mapping in _runtimeMappings)
             {
-                int vKey = kvp.Key;
-                int ddcode = kvp.Value;
+                var active = mapping.TriggerMode == AshTriggerMode.Hold
+                    ? (GetAsyncKeyState(mapping.TriggerKeyCode) & 0x8000) != 0
+                    : _toggledKeys.GetValueOrDefault(mapping.TriggerKeyCode, false);
+                mapping.SetActive(active, now);
 
-                if (_modeMap.GetValueOrDefault(vKey, 0) == 0 && (GetAsyncKeyState(vKey) & 0x8000) != 0)
-                {
-                    PressKey(ddcode, AshConfigPool.Instance.ReleaseDelay);
-                }
+                if (!active || !HasReached(now, mapping.NextRunAt)) continue;
 
-                if (_modeMap.GetValueOrDefault(vKey, 0) == 1 && pressedKeys.GetValueOrDefault(vKey, false))
-                {
-                    PressKey(ddcode, AshConfigPool.Instance.ReleaseDelay);
-                }
+                var step = mapping.CurrentStep;
+                SendKey(step.OutputCode, step.HoldMilliseconds);
+                mapping.Advance(now + step.DelayAfterMilliseconds);
             }
         }
 
-        private void PressKey(int ddcode, int press)
+        private void SendKey(int outputCode, int releaseDelay)
         {
-            if (usingInterception)
+            if (_useInterception)
             {
-                /*var keyStroke = new KeyboardInputData
-                {
-                    UnitId = 0, // 固定为 0
-                    MakeCode = (ushort)ddcode, // 'A' 键的扫描码
-                    Flags = 0x00, // 按下状态
-                    Reserved = 0, // 固定为 0
-                    ExtraInformation = 0 // 无附加信息
-                };
-                icl.SendKeyStroke(keyStroke);
-                AshStopwatch.PreciseDelay(press);
-                keyStroke.Flags = 0x01;
-                icl.SendKeyStroke(keyStroke);*/
                 var stroke = new InterceptionControl.Stroke
                 {
                     Key = new InterceptionControl.KeyStroke
                     {
-                        Code = (ushort)ddcode,
-                        State = 0x00 // 按下键
+                        Code = (ushort)outputCode,
+                        State = 0x00
                     }
                 };
-                ic.Send(1, ref stroke);
-                AshStopwatch.PreciseDelay(press);
-                stroke.Key.State = 0x01; // 松开键
-                ic.Send(1, ref stroke);
+                _interceptionControl.Send(1, ref stroke);
+                AshStopwatch.PreciseDelay(releaseDelay);
+                stroke.Key.State = 0x01;
+                _interceptionControl.Send(1, ref stroke);
             }
             else
             {
-                dd.key(ddcode, 1);
-                AshStopwatch.PreciseDelay(press);
-                dd.key(ddcode, 2);
+                _ddControl.key(outputCode, 1);
+                AshStopwatch.PreciseDelay(releaseDelay);
+                _ddControl.key(outputCode, 2);
             }
         }
 
-        private void button1_Click(object sender, EventArgs e)
+        private static bool HasReached(int now, int dueAt)
         {
-            OpenFileDialog ofd = new OpenFileDialog { Filter = "DD|*.DLL" };
-
-            if (ofd.ShowDialog() != DialogResult.OK) return;
-
-            LoadDllFile(ofd.FileName);
-            usingInterception = false;
+            return unchecked(now - dueAt) >= 0;
         }
 
-        private void LoadDllFile(string dllfile)
+        private void UpdateVersionLabel()
         {
-            int ret = dd.Load(dllfile);
-            if (ret != 1)
+            var version = Assembly.GetExecutingAssembly()
+                .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+                ?.InformationalVersion;
+            if (string.IsNullOrWhiteSpace(version))
             {
-                MessageBox.Show("Load Error");
+                version = Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "dev";
+            }
+
+            var fullVersion = version.StartsWith("v", StringComparison.OrdinalIgnoreCase) ? version : "v" + version;
+            var metadataIndex = fullVersion.IndexOf('+');
+            versionLabel.Text = metadataIndex < 0 ? fullVersion : fullVersion.Substring(0, metadataIndex);
+            _iconToolTips.Describe(versionLabel, fullVersion);
+        }
+
+        private void LoadDdDriverButton_Click(object sender, EventArgs e)
+        {
+            using (var dialog = new OpenFileDialog { Filter = "DD 驱动 (*.dll)|*.dll" })
+            {
+                if (dialog.ShowDialog() != DialogResult.OK) return;
+
+                LoadDdDriver(dialog.FileName);
+                _useInterception = false;
+            }
+        }
+
+        private void LoadDdDriver(string dllFile)
+        {
+            var result = _ddControl.Load(dllFile);
+            if (result != 1)
+            {
+                MessageBox.Show("DD 驱动加载失败。", "加载失败", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
-            ret = dd.btn(0);
-            if (ret != 1)
+            result = _ddControl.btn(0);
+            if (result != 1)
             {
-                MessageBox.Show("Initialize Error");
+                MessageBox.Show("DD 驱动初始化失败。", "初始化失败", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
-            buttonLoadDriver.Text = "DD 驱动已加载";
-            buttonSwitchEnable.Enabled = true;
-            DDLoaded = true;
+            toggleButton.Enabled = true;
+            SetStatus(false, "DD 驱动就绪");
         }
 
         [DllImport("user32.dll")]
@@ -243,117 +253,175 @@ namespace AshClicker
         [DllImport("user32.dll")]
         public static extern bool UnregisterHotKey(IntPtr hWnd, int id);
 
-        private void button2_Click(object sender, EventArgs e)
+        private void ToggleButton_Click(object sender, EventArgs e)
         {
-            started = !started;
-            if (started)
+            if (!_isRunning)
             {
-                AshStopwatch.UsePrecise = preciseDelay.Checked;
-                AshConfigPool.Instance.GetAshConfigs(usingInterception, out _keyMap, out _modeMap);
-                var modes = _modeMap.Where(m => m.Value == 1).ToList();
-
-                // No idea why, but with Fody enabled, foreach will throw an exception :(
-                for (var i = 0; i < modes.Count; i++)
+                AshStopwatch.UsePrecise = preciseDelayCheckBox.Checked;
+                _runtimeMappings = AshConfigPool.Instance.CreateRuntimeMappings(_useInterception);
+                if (_runtimeMappings.Count == 0)
                 {
-                    RegisterKey(modes[i].Key, 0);
+                    MessageBox.Show("请先添加至少一条按键序列。", "没有可运行的映射", MessageBoxButtons.OK,
+                        MessageBoxIcon.Information);
+                    return;
                 }
 
-                AshConfigPool.Instance.PressDelay = Math.Max(int.Parse(textBox1.Text), 1);
+                if (_interceptionControl != null)
+                {
+                    _interceptionControl.UseReusableSendBuffer = highPerformanceCheckBox.Checked;
+                }
+                var modes = _runtimeMappings.Where(mapping => mapping.TriggerMode == AshTriggerMode.Toggle).ToList();
+                var registeredHotKeys = new List<int>();
+
+                for (var i = 0; i < modes.Count; i++)
+                {
+                    if (!RegisterKey(modes[i].TriggerKeyCode, 0))
+                    {
+                        foreach (var virtualKey in registeredHotKeys)
+                        {
+                            UnregisterHotKey(Handle, HotKeyIdBase + virtualKey);
+                        }
+
+                        _toggledKeys.Clear();
+                        return;
+                    }
+
+                    registeredHotKeys.Add(modes[i].TriggerKeyCode);
+                }
+
+                _isRunning = true;
+                AshConfigPool.Instance.PressDelay = (int)pressDelayNumeric.Value;
                 AshTimer.Instance.Delay = AshConfigPool.Instance.PressDelay;
-                AshTimer.Instance.Func = tick;
+                AshTimer.Instance.Func = ProcessMappings;
                 AshTimer.Instance.Start();
-                buttonSwitchEnable.Text = "按键关闭";
-                label3.Text = "已开启";
-                preciseDelay.Enabled = false;
-                buttonAddKey.Enabled = false;
-                buttonDeleteKey.Enabled = false;
+                SetStatus(true, "正在运行");
+                SetConfigurationEnabled(false);
             }
             else
             {
+                _isRunning = false;
                 AshTimer.Instance.Stop();
-                foreach (var modes in _modeMap)
+                foreach (var mapping in _runtimeMappings)
                 {
-                    if (modes.Value == 1)
+                    if (mapping.TriggerMode == AshTriggerMode.Toggle)
                     {
-                        UnregisterHotKey(Handle, ASH_HOTKEY_ID + modes.Key);
+                        UnregisterHotKey(Handle, HotKeyIdBase + mapping.TriggerKeyCode);
                     }
                 }
 
-                buttonSwitchEnable.Text = "按键开启";
-                label3.Text = "关闭";
-                preciseDelay.Enabled = true;
-                buttonAddKey.Enabled = true;
-                buttonDeleteKey.Enabled = true;
+                _toggledKeys.Clear();
+                _runtimeMappings.Clear();
+                SetStatus(false, "已停止");
+                SetConfigurationEnabled(true);
             }
         }
 
-        private void textBox1_TextChanged(object sender, EventArgs e)
+        private void PressDelayNumeric_ValueChanged(object sender, EventArgs e)
         {
-            if (textBox1.Text.Length == 0) textBox1.Text = "1";
-
-            textBox1.Text = new string(textBox1.Text.Where(char.IsDigit).ToArray());
-            textBox1.SelectionStart = textBox1.Text.Length;
-            AshConfigPool.Instance.PressDelay = Math.Max(int.Parse(textBox1.Text), 1);
+            AshConfigPool.Instance.PressDelay = (int)pressDelayNumeric.Value;
             AshTimer.Instance.Delay = AshConfigPool.Instance.PressDelay;
             AshConfigPool.Instance.SaveConfig();
         }
 
-        private void textBox2_TextChanged(object sender, EventArgs e)
+        private void ReleaseDelayNumeric_ValueChanged(object sender, EventArgs e)
         {
-            if (textBox2.Text.Length == 0) textBox2.Text = "1";
-
-            textBox2.Text = new string(textBox2.Text.Where(char.IsDigit).ToArray());
-            textBox2.SelectionStart = textBox2.Text.Length;
-            AshConfigPool.Instance.ReleaseDelay = Math.Max(int.Parse(textBox2.Text), 1);
+            AshConfigPool.Instance.ReleaseDelay = (int)releaseDelayNumeric.Value;
             AshConfigPool.Instance.SaveConfig();
         }
 
-        private void buttonAddKey_Click(object sender, EventArgs e)
+        private void HighPerformanceCheckBox_CheckedChanged(object sender, EventArgs e)
         {
-            new KeySelectionFrame(listView1).Show();
+            AshConfigPool.Instance.UseHighPerformanceInput = highPerformanceCheckBox.Checked;
+            AshConfigPool.Instance.SaveConfig();
         }
 
-        private void buttonDeleteKey_Click(object sender, EventArgs e)
+        private void AddMappingButton_Click(object sender, EventArgs e)
         {
-            foreach (ListViewItem selectedItem in listView1.SelectedItems)
+            using (var dialog = new KeySelectionFrame())
             {
-                listView1.Items.Remove(selectedItem);
+                if (dialog.ShowDialog(this) == DialogResult.OK)
+                {
+                    try
+                    {
+                        AshConfigPool.Instance.ReplaceMapping(null, dialog.Mapping);
+                        RefreshMappingList();
+                    }
+                    catch (InvalidOperationException exception)
+                    {
+                        MessageBox.Show(exception.Message, "无法保存", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    }
+                }
             }
-
-            AshConfigPool.Instance.UpdateFromList(listView1);
         }
 
-        private void RegisterKey(int vKey, KeyModifiers modifiers)
+        private void DeleteMappingButton_Click(object sender, EventArgs e)
         {
-            int id = ASH_HOTKEY_ID + vKey;
-            _modeMap[vKey] = 1;
-            pressedKeys[vKey] = false;
+            if (_isRunning || !(mappingListView.SelectedItems.Count > 0 &&
+                  mappingListView.SelectedItems[0].Tag is AshKeyMapping mapping)) return;
+
+            var trigger = AshKeyMap.Get(mapping.TriggerKeyCode).Description;
+            if (MessageBox.Show(this, $"删除「{trigger}」的按键映射？", "删除映射",
+                    MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) !=
+                DialogResult.Yes) return;
+
+            AshConfigPool.Instance.RemoveMapping(mapping);
+            RefreshMappingList();
+        }
+
+        private void EditMappingButton_Click(object sender, EventArgs e)
+        {
+            if (_isRunning || !(mappingListView.SelectedItems.Count > 0 &&
+                  mappingListView.SelectedItems[0].Tag is AshKeyMapping mapping)) return;
+
+            using (var dialog = new KeySelectionFrame(mapping))
+            {
+                if (dialog.ShowDialog(this) != DialogResult.OK) return;
+
+                try
+                {
+                    AshConfigPool.Instance.ReplaceMapping(mapping, dialog.Mapping);
+                    RefreshMappingList();
+                }
+                catch (InvalidOperationException exception)
+                {
+                    MessageBox.Show(exception.Message, "无法保存", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+            }
+        }
+
+        private bool RegisterKey(int vKey, KeyModifiers modifiers)
+        {
+            var id = HotKeyIdBase + vKey;
 
             if (!RegisterHotKey(Handle, id, modifiers, (Keys)vKey))
             {
-                MessageBox.Show($"热键注册失败: {vKey}");
+                MessageBox.Show($"热键注册失败: {AshKeyMap.Get(vKey).Description}", "无法启动",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return false;
             }
+
+            _toggledKeys[vKey] = false;
+            return true;
         }
 
         protected override void WndProc(ref Message m)
         {
-            const int WM_HOTKEY = 0x0312;
-
-            if (m.Msg == WM_HOTKEY)
+            if (m.Msg == WmHotKey)
             {
-                int id = m.WParam.ToInt32();
-                int vKey = id - ASH_HOTKEY_ID;
+                var id = m.WParam.ToInt32();
+                var vKey = id - HotKeyIdBase;
 
-                if (_modeMap.GetValueOrDefault(vKey, 0) == 1)
+                if (_runtimeMappings.Any(mapping => mapping.TriggerKeyCode == vKey &&
+                                                    mapping.TriggerMode == AshTriggerMode.Toggle))
                 {
-                    pressedKeys[vKey] = !pressedKeys[vKey];
-                    if (pressedKeys[vKey] && soundEffect.Checked)
+                    _toggledKeys[vKey] = !_toggledKeys[vKey];
+                    if (_toggledKeys[vKey] && soundEffectCheckBox.Checked)
                     {
-                        _start.Play();
+                        _startSound.Play();
                     }
-                    else if (soundEffect.Checked)
+                    else if (soundEffectCheckBox.Checked)
                     {
-                        _stop.Play();
+                        _stopSound.Play();
                     }
                 }
             }
@@ -361,17 +429,15 @@ namespace AshClicker
             base.WndProc(ref m);
         }
 
-        private bool usingInterception = true;
-
-        private void buttonDriverless_Click(object sender, EventArgs e)
+        private void UseInterceptionButton_Click(object sender, EventArgs e)
         {
-            buttonLoadDriver.Text = "无驱动模式";
-            buttonLoadDriver.Enabled = false;
-            buttonSwitchEnable.Enabled = true;
-            usingInterception = true;
+            loadDdDriverButton.Enabled = false;
+            toggleButton.Enabled = true;
+            _useInterception = true;
+            SetStatus(false, "Interception 已就绪");
         }
 
-        private void buttonInstallInterception_Click(object sender, EventArgs e)
+        private void InstallDriverButton_Click(object sender, EventArgs e)
         {
             var dialogResult = MessageBox.Show(
                 "即将安装 Interception 驱动。\n\n" +
@@ -425,13 +491,11 @@ namespace AshClicker
             }
         }
 
-        static string RunInstaller(string arguments)
+        private static string RunInstaller(string arguments)
         {
-            // 创建临时文件来存储 Properties.Resources.installer
             string tempInstallerPath = Path.Combine(Path.GetTempPath(), "installer.exe");
             File.WriteAllBytes(tempInstallerPath, Properties.Resources.installer);
 
-            // 配置进程启动信息
             ProcessStartInfo startInfo = new ProcessStartInfo
             {
                 FileName = tempInstallerPath,
@@ -440,37 +504,44 @@ namespace AshClicker
                 RedirectStandardError = true,
                 UseShellExecute = false,
                 CreateNoWindow = true,
-                Verb = "runas" // 以管理员权限运行
+                Verb = "runas"
             };
 
-            using (Process process = new Process { StartInfo = startInfo })
+            try
             {
-                // 捕获输出
-                process.Start();
-                string output = process.StandardOutput.ReadToEnd();
-                process.WaitForExit();
+                using (Process process = new Process { StartInfo = startInfo })
+                {
+                    process.Start();
+                    string output = process.StandardOutput.ReadToEnd();
+                    process.WaitForExit();
 
-                // 删除临时文件
-                if (File.Exists(tempInstallerPath))
-                {
-                    File.Delete(tempInstallerPath);
-                }
+                    if (!string.IsNullOrEmpty(output))
+                    {
+                        string[] lines = output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+                        return lines[lines.Length - 1];
+                    }
 
-                // 返回最后一行的输出
-                if (!string.IsNullOrEmpty(output))
-                {
-                    string[] lines = output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
-                    return lines[lines.Length - 1]; // 返回最后一行
+                    throw new InvalidOperationException("安装程序没有返回输出。");
                 }
-                else
-                {
-                    throw new Exception("No output received from installer.");
-                }
+            }
+            finally
+            {
+                if (File.Exists(tempInstallerPath)) File.Delete(tempInstallerPath);
             }
         }
 
-        private void button1_Click_1(object sender, EventArgs e)
+        private void UninstallDriverButton_Click(object sender, EventArgs e)
         {
+            var confirmation = MessageBox.Show(
+                "确定要卸载 Interception 驱动吗？\n\n" +
+                "卸载后按键功能将无法使用，并且需要重启电脑才能完成卸载。",
+                "确认卸载驱动",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning,
+                MessageBoxDefaultButton.Button2);
+
+            if (confirmation != DialogResult.Yes) return;
+
             CreateRegistry("keyboard");
             CreateRegistry("mouse");
             var result = RunInstaller("/uninstall");
@@ -493,7 +564,7 @@ namespace AshClicker
             }
         }
 
-        static void CreateRegistry(string serviceName)
+        private static void CreateRegistry(string serviceName)
         {
             try
             {
@@ -505,7 +576,6 @@ namespace AshClicker
                         throw new Exception("Failed to open Services registry key.");
                     }
 
-                    // 创建主项
                     using (RegistryKey serviceKey = servicesKey.CreateSubKey(serviceName))
                     {
                         if (serviceKey == null)
@@ -513,7 +583,6 @@ namespace AshClicker
                             throw new Exception($"Failed to create {serviceName} registry key.");
                         }
 
-                        // 可选：创建 Security 和 Enum 子项
                         serviceKey.CreateSubKey("Security")?.Close();
                         serviceKey.CreateSubKey("Enum")?.Close();
 
@@ -525,6 +594,102 @@ namespace AshClicker
             {
                 Console.WriteLine($"Error recreating {serviceName} registry: {ex.Message}");
             }
+        }
+
+        private void GithubButton_Click(object sender, EventArgs e)
+        {
+            OpenUrl("https://github.com/lj2000lj/AshClicker/");
+        }
+
+        private void VoiceLicenseButton_Click(object sender, EventArgs e)
+        {
+            OpenUrl("https://zunko.jp/con_ongen_kiyaku.html");
+        }
+
+        private static void OpenUrl(string url)
+        {
+            Process.Start(new ProcessStartInfo { FileName = url, UseShellExecute = true });
+        }
+
+        private void MappingListView_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            UpdateMappingActions();
+        }
+
+        private void UpdateMappingActions()
+        {
+            var canEdit = !_isRunning && mappingListView.SelectedItems.Count > 0;
+            editMappingButton.Enabled = canEdit;
+            deleteMappingButton.Enabled = canEdit;
+        }
+
+        private void SetConfigurationEnabled(bool enabled)
+        {
+            preciseDelayCheckBox.Enabled = enabled;
+            highPerformanceCheckBox.Enabled = enabled;
+            pressDelayNumeric.Enabled = enabled;
+            releaseDelayNumeric.Enabled = enabled;
+            addMappingButton.Enabled = enabled;
+            UpdateMappingActions();
+            installDriverButton.Enabled = enabled;
+            uninstallDriverButton.Enabled = enabled;
+        }
+
+        private void SetStatus(bool running, string text)
+        {
+            SetRunIcon(running);
+            statusValueLabel.Text = text;
+            statusDotLabel.ForeColor = running
+                ? System.Drawing.Color.FromArgb(55, 184, 126)
+                : System.Drawing.Color.FromArgb(142, 151, 172);
+        }
+
+        private void RefreshMappingList()
+        {
+            mappingListView.Items.Clear();
+            foreach (var mapping in AshConfigPool.Instance.Mappings)
+            {
+                mappingListView.Items.Add(AshUtil.CreateKeyMappingItem(mapping));
+            }
+
+            mappingCountLabel.Text = $"{mappingListView.Items.Count} 条";
+            UpdateMappingActions();
+        }
+
+        private static void LogDriverLoadFailure(Exception exception)
+        {
+            var logFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "error_log.txt");
+            File.AppendAllText(logFilePath,
+                $"[{DateTime.Now}] Exception: {exception.Message}{Environment.NewLine}{exception.StackTrace}{Environment.NewLine}");
+
+            try
+            {
+                var mouseStatus = RunScCommand("sc query mouse.sys");
+                var keyboardStatus = RunScCommand("sc query keyboard.sys");
+                File.AppendAllText(logFilePath,
+                    $"[{DateTime.Now}] SC Query Results:{Environment.NewLine}" +
+                    $"Mouse.sys Status:{Environment.NewLine}{mouseStatus}{Environment.NewLine}" +
+                    $"Keyboard.sys Status:{Environment.NewLine}{keyboardStatus}{Environment.NewLine}");
+            }
+            catch (Exception queryException)
+            {
+                File.AppendAllText(logFilePath,
+                    $"[{DateTime.Now}] Error querying SC status: {queryException.Message}{Environment.NewLine}");
+            }
+        }
+
+        protected override void OnFormClosed(FormClosedEventArgs e)
+        {
+            if (_isRunning)
+            {
+                _isRunning = false;
+                AshTimer.Instance.Stop();
+            }
+
+            _startSound?.Dispose();
+            _stopSound?.Dispose();
+            _interceptionControl?.Dispose();
+            base.OnFormClosed(e);
         }
     }
 }

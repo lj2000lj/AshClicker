@@ -1,89 +1,107 @@
-name: Build, Rename, and Release
+name: Build and Release
 
 on:
   push:
+    branches: [main]
     tags:
-      - 'v*.*.*'  # 当推送符合 vX.X.X 格式的标签时触发
+      - 'v*.*.*'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build:
     runs-on: windows-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+      artifact: ${{ steps.version.outputs.artifact }}
 
     steps:
-      - name: 检出代码
-        uses: actions/checkout@v3
+      - name: Checkout source and tags
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false
 
-      - name: 设置 .NET SDK
-        uses: actions/setup-dotnet@v3
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '6.0.x'
+          dotnet-version: '8.0.x'
 
-      - name: 恢复依赖项
-        run: dotnet restore
+      - name: Resolve build version
+        id: version
+        shell: pwsh
+        run: ./.github/scripts/Get-BuildVersion.ps1
 
-      - name: 构建项目
-        run: dotnet build --configuration Release
-
-      - name: 发布应用程序
-        run: dotnet publish -c Release -o publish
-
-      - name: 重命名文件
+      - name: Publish and verify EXE
+        shell: pwsh
+        env:
+          BUILD_VERSION: ${{ steps.version.outputs.version }}
+          ASSEMBLY_VERSION: ${{ steps.version.outputs.assembly_version }}
+          FILE_VERSION: ${{ steps.version.outputs.file_version }}
+          INFORMATIONAL_VERSION: ${{ steps.version.outputs.informational_version }}
         run: |
-          cd publish
-          Rename-Item "AshClicker.exe" "AshClicker-${{ github.ref_name }}.exe"
+          dotnet publish AshClicker.csproj -c Release -o publish -p:ContinuousIntegrationBuild=true `
+            "-p:Version=$env:BUILD_VERSION" "-p:AssemblyVersion=$env:ASSEMBLY_VERSION" `
+            "-p:FileVersion=$env:FILE_VERSION" "-p:InformationalVersion=$env:INFORMATIONAL_VERSION" `
+            -p:IncludeSourceRevisionInInformationalVersion=false
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: 计算指纹
+          $exe = Get-Item -LiteralPath 'publish/AshClicker.exe'
+          if ($exe.VersionInfo.FileVersion -cne $env:FILE_VERSION -or
+              $exe.VersionInfo.ProductVersion -cne $env:INFORMATIONAL_VERSION) {
+            throw "Unexpected EXE version: $($exe.VersionInfo.FileVersion), $($exe.VersionInfo.ProductVersion)"
+          }
+
+          $filename = "AshClicker-v$env:BUILD_VERSION.exe"
+          Rename-Item -LiteralPath $exe.FullName -NewName $filename
+          $hash = (Get-FileHash -LiteralPath "publish/$filename" -Algorithm SHA256).Hash
+          "SHA256  $hash  $filename" | Set-Content -LiteralPath 'publish/fingerprint.txt' -Encoding ascii
+
+      - name: Upload EXE and fingerprint
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.version.outputs.artifact }}
+          path: |
+            publish/AshClicker-v${{ steps.version.outputs.version }}.exe
+            publish/fingerprint.txt
+          if-no-files-found: error
+
+  release:
+    if: github.event_name == 'push' && github.ref_type == 'tag'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download verified build
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build.outputs.artifact }}
+
+      - name: Create GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          BUILD_VERSION: ${{ needs.build.outputs.version }}
+          IS_PRERELEASE: ${{ needs.build.outputs.prerelease }}
         run: |
-          cd publish
-          certutil -hashfile AshClicker-${{ github.ref_name }}.exe SHA256 >> ../指纹信息.txt
-          type ../指纹信息.txt
-
-      - name: 读取指纹内容
-        id: read_hashes
-        run: echo "::set-output name=hashes::$(cat 指纹信息.txt)"
-
-      - name: 创建 Release
-        id: create_release
-        uses: actions/create-release@v1
-        with:
-          tag_name: ${{ github.ref_name }}
-          release_name: Release ${{ github.ref_name }}
-          body: |
-            以下是生成的文件指纹（SHA256）：
-            ```
-            ${{ steps.read_hashes.outputs.hashes }}
-            ```
-
-            **验证文件完整性：**
-            1. 在 Windows 系统中打开命令提示符。
-            2. 输入以下命令以验证指纹：
-               ```
-               certutil -hashfile 文件路径 SHA256
-               ```
-            3. 比较输出的指纹值与此处列出的指纹是否一致。
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: 上传可执行文件
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: publish/AshClicker-${{ github.ref_name }}.exe
-          asset_name: AshClicker-${{ github.ref_name }}.exe
-          asset_content_type: application/octet-stream
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: 上传指纹文件
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: 指纹信息.txt
-          asset_name: 指纹信息.txt
-          asset_content_type: text/plain
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          $filename = "AshClicker-v$env:BUILD_VERSION.exe"
+          $releaseArgs = @(
+            $env:GITHUB_REF_NAME
+            $filename
+            'fingerprint.txt'
+            '--verify-tag'
+            '--title', "Release $env:GITHUB_REF_NAME"
+            '--notes', "SHA-256 fingerprint is included in fingerprint.txt. Verify with: certutil -hashfile $filename SHA256"
+          )
+          if ($env:IS_PRERELEASE -eq 'true') {
+            $releaseArgs += '--prerelease'
+          }
+          gh release create @releaseArgs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

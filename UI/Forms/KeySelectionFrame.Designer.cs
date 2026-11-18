@@ -1,142 +1,253 @@
 using System.ComponentModel;
+using System.Drawing;
+using System.Windows.Forms;
 
 namespace AshClicker
 {
-
     partial class KeySelectionFrame
     {
-        /// <summary>
-        /// Required designer variable.
-        /// </summary>
-        private IContainer components = null;
+        private IContainer components;
+        private Label triggerLabel;
+        private Button triggerHelpButton;
+        private TextBox triggerKeyTextBox;
+        private Label modeLabel;
+        private ComboBox modeComboBox;
+        private Label sequenceLabel;
+        private Button sequenceHelpButton;
+        private TextBox stepKeyTextBox;
+        private ListView stepsListView;
+        private Panel stepEditorPanel;
+        private Label selectedStepLabel;
+        private Button stepHelpButton;
+        private Label repeatLabel;
+        private NumericUpDown repeatNumeric;
+        private Label holdLabel;
+        private NumericUpDown holdNumeric;
+        private Label delayLabel;
+        private NumericUpDown delayNumeric;
+        private Button removeStepButton;
+        private Button moveStepUpButton;
+        private Button moveStepDownButton;
+        private Button cancelButton;
+        private Button saveButton;
 
-        /// <summary>
-        /// Clean up any resources being used.
-        /// </summary>
-        /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
         protected override void Dispose(bool disposing)
         {
-            if (disposing && (components != null))
-            {
-                components.Dispose();
-            }
-
+            if (disposing && components != null) components.Dispose();
             base.Dispose(disposing);
         }
 
-        #region Windows Form Designer generated code
-
-        /// <summary>
-        /// Required method for Designer support - do not modify
-        /// the contents of this method with the code editor.
-        /// </summary>
         private void InitializeComponent()
         {
-            this.textBox1 = new System.Windows.Forms.TextBox();
-            this.textBox2 = new System.Windows.Forms.TextBox();
-            this.comboBox1 = new System.Windows.Forms.ComboBox();
-            this.label1 = new System.Windows.Forms.Label();
-            this.label2 = new System.Windows.Forms.Label();
-            this.label3 = new System.Windows.Forms.Label();
-            this.button1 = new System.Windows.Forms.Button();
-            this.Icon = Properties.Resources.ashlogo;
+            this.components = new Container();
+            this.triggerLabel = new Label();
+            this.triggerHelpButton = new Button();
+            this.triggerKeyTextBox = new TextBox();
+            this.modeLabel = new Label();
+            this.modeComboBox = new ComboBox();
+            this.sequenceLabel = new Label();
+            this.sequenceHelpButton = new Button();
+            this.stepKeyTextBox = new TextBox();
+            this.stepsListView = new ListView();
+            this.stepEditorPanel = new Panel();
+            this.selectedStepLabel = new Label();
+            this.stepHelpButton = new Button();
+            this.repeatLabel = new Label();
+            this.repeatNumeric = new NumericUpDown();
+            this.holdLabel = new Label();
+            this.holdNumeric = new NumericUpDown();
+            this.delayLabel = new Label();
+            this.delayNumeric = new NumericUpDown();
+            this.removeStepButton = new Button();
+            this.moveStepUpButton = new Button();
+            this.moveStepDownButton = new Button();
+            this.cancelButton = new Button();
+            this.saveButton = new Button();
+            this.stepEditorPanel.SuspendLayout();
+            ((ISupportInitialize)this.repeatNumeric).BeginInit();
+            ((ISupportInitialize)this.holdNumeric).BeginInit();
+            ((ISupportInitialize)this.delayNumeric).BeginInit();
             this.SuspendLayout();
-            // 
-            // textBox1
-            // 
-            this.textBox1.ImeMode = System.Windows.Forms.ImeMode.Disable;
-            this.textBox1.Location = new System.Drawing.Point(12, 49);
-            this.textBox1.Name = "textBox1";
-            this.textBox1.Size = new System.Drawing.Size(121, 25);
-            this.textBox1.TabIndex = 0;
-            this.textBox1.Text = "（按下选择）";
-            this.textBox1.KeyDown += new System.Windows.Forms.KeyEventHandler(this.textBox_KeyUp);
-            this.textBox1.KeyUp += new System.Windows.Forms.KeyEventHandler(this.textBox_KeyUp);
-            // 
-            // textBox2
-            // 
-            this.textBox2.ImeMode = System.Windows.Forms.ImeMode.Disable;
-            this.textBox2.Location = new System.Drawing.Point(139, 49);
-            this.textBox2.Name = "textBox2";
-            this.textBox2.Size = new System.Drawing.Size(120, 25);
-            this.textBox2.TabIndex = 1;
-            this.textBox2.Text = "（按下选择）";
-            this.textBox2.KeyDown += new System.Windows.Forms.KeyEventHandler(this.textBox_KeyUp);
-            this.textBox2.KeyUp += new System.Windows.Forms.KeyEventHandler(this.textBox_KeyUp);
-            // 
-            // comboBox1
-            // 
-            this.comboBox1.FormattingEnabled = true;
-            this.comboBox1.Items.AddRange(new object[] { "长按连发", "按键切换" });
-            this.comboBox1.Location = new System.Drawing.Point(265, 51);
-            this.comboBox1.Name = "comboBox1";
-            this.comboBox1.Size = new System.Drawing.Size(113, 23);
-            this.comboBox1.TabIndex = 2;
-            // 
-            // label1
-            // 
-            this.label1.Location = new System.Drawing.Point(12, 29);
-            this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(89, 19);
-            this.label1.TabIndex = 3;
-            this.label1.Text = "按下的键";
-            // 
-            // label2
-            // 
-            this.label2.Location = new System.Drawing.Point(139, 29);
-            this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(89, 23);
-            this.label2.TabIndex = 4;
-            this.label2.Text = "连发的按键";
-            // 
-            // label3
-            // 
-            this.label3.Location = new System.Drawing.Point(265, 29);
-            this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(82, 23);
-            this.label3.TabIndex = 5;
-            this.label3.Text = "按键模式";
-            // 
-            // button1
-            // 
-            this.button1.Location = new System.Drawing.Point(204, 84);
-            this.button1.Name = "button1";
-            this.button1.Size = new System.Drawing.Size(174, 44);
-            this.button1.TabIndex = 6;
-            this.button1.Text = "添加按键";
-            this.button1.UseVisualStyleBackColor = true;
-            this.button1.Click += new System.EventHandler(this.button1_Click);
-            // 
-            // KeySelectionFrame
-            // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 15F);
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(390, 140);
-            this.Controls.Add(this.button1);
-            this.Controls.Add(this.label3);
-            this.Controls.Add(this.label2);
-            this.Controls.Add(this.label1);
-            this.Controls.Add(this.comboBox1);
-            this.Controls.Add(this.textBox2);
-            this.Controls.Add(this.textBox1);
-            this.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
-            this.Name = "KeySelectionFrame";
-            this.Text = "按键选择";
-            this.Load += new System.EventHandler(this.KeySelectionFrame_Load);
+
+            this.triggerLabel.AutoSize = true;
+            this.triggerLabel.Location = new Point(24, 22);
+            this.triggerLabel.Text = "触发按键";
+            this.triggerHelpButton.Location = new Point(104, 15);
+            this.triggerHelpButton.Size = new Size(34, 34);
+            this.triggerHelpButton.TabIndex = 1;
+
+            this.triggerKeyTextBox.BackColor = Color.White;
+            this.triggerKeyTextBox.BorderStyle = BorderStyle.FixedSingle;
+            this.triggerKeyTextBox.ImeMode = ImeMode.Disable;
+            this.triggerKeyTextBox.Location = new Point(24, 53);
+            this.triggerKeyTextBox.ReadOnly = true;
+            this.triggerKeyTextBox.Size = new Size(454, 27);
+            this.triggerKeyTextBox.TabIndex = 0;
+            this.triggerKeyTextBox.Text = "—";
+            this.triggerKeyTextBox.TextAlign = HorizontalAlignment.Center;
+            this.triggerKeyTextBox.KeyDown += this.TriggerKeyTextBox_KeyDown;
+
+            this.modeLabel.AutoSize = true;
+            this.modeLabel.Location = new Point(498, 22);
+            this.modeLabel.Text = "触发方式";
+            this.modeComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
+            this.modeComboBox.Items.AddRange(new object[] { "按住循环", "按键切换" });
+            this.modeComboBox.Location = new Point(498, 52);
+            this.modeComboBox.Size = new Size(300, 28);
+            this.modeComboBox.TabIndex = 2;
+
+            this.sequenceLabel.AutoSize = true;
+            this.sequenceLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Bold);
+            this.sequenceLabel.Location = new Point(24, 111);
+            this.sequenceLabel.Text = "执行序列";
+            this.sequenceHelpButton.Location = new Point(104, 107);
+            this.sequenceHelpButton.Size = new Size(34, 34);
+            this.sequenceHelpButton.TabIndex = 4;
+
+            this.stepKeyTextBox.BackColor = Color.White;
+            this.stepKeyTextBox.BorderStyle = BorderStyle.FixedSingle;
+            this.stepKeyTextBox.ImeMode = ImeMode.Disable;
+            this.stepKeyTextBox.Location = new Point(24, 148);
+            this.stepKeyTextBox.ReadOnly = true;
+            this.stepKeyTextBox.Size = new Size(454, 27);
+            this.stepKeyTextBox.TabIndex = 3;
+            this.stepKeyTextBox.Text = "—";
+            this.stepKeyTextBox.TextAlign = HorizontalAlignment.Center;
+            this.stepKeyTextBox.KeyDown += this.StepKeyTextBox_KeyDown;
+
+            this.stepsListView.BorderStyle = BorderStyle.FixedSingle;
+            this.stepsListView.Columns.AddRange(new[]
+            {
+                new ColumnHeader { Text = "#", Width = 38 },
+                new ColumnHeader { Text = "按键", Width = 100 },
+                new ColumnHeader { Text = "次数", Width = 60 },
+                new ColumnHeader { Text = "按住 (ms)", Width = 114 },
+                new ColumnHeader { Text = "等待 (ms)", Width = 118 }
+            });
+            this.stepsListView.FullRowSelect = true;
+            this.stepsListView.HeaderStyle = ColumnHeaderStyle.Nonclickable;
+            this.stepsListView.HideSelection = false;
+            this.stepsListView.Location = new Point(24, 190);
+            this.stepsListView.MultiSelect = false;
+            this.stepsListView.Size = new Size(454, 236);
+            this.stepsListView.TabIndex = 5;
+            this.stepsListView.UseCompatibleStateImageBehavior = false;
+            this.stepsListView.View = View.Details;
+            this.stepsListView.SelectedIndexChanged += this.StepsListView_SelectedIndexChanged;
+
+            this.stepEditorPanel.BackColor = Color.White;
+            this.stepEditorPanel.BorderStyle = BorderStyle.FixedSingle;
+            this.stepEditorPanel.Location = new Point(498, 112);
+            this.stepEditorPanel.Size = new Size(300, 314);
+            this.stepEditorPanel.TabIndex = 6;
+            this.stepEditorPanel.Controls.AddRange(new Control[]
+            {
+                this.selectedStepLabel, this.stepHelpButton,
+                this.repeatLabel, this.repeatNumeric,
+                this.holdLabel, this.holdNumeric,
+                this.delayLabel, this.delayNumeric,
+                this.moveStepUpButton, this.moveStepDownButton, this.removeStepButton
+            });
+
+            this.selectedStepLabel.AutoEllipsis = true;
+            this.selectedStepLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Bold);
+            this.selectedStepLabel.Location = new Point(17, 17);
+            this.selectedStepLabel.Size = new Size(223, 28);
+            this.selectedStepLabel.Text = "步骤设置";
+            this.stepHelpButton.Location = new Point(247, 12);
+            this.stepHelpButton.Size = new Size(34, 34);
+            this.stepHelpButton.TabIndex = 6;
+
+            this.repeatLabel.AutoSize = true;
+            this.repeatLabel.Location = new Point(18, 75);
+            this.repeatLabel.Text = "重复次数";
+            this.repeatNumeric.Location = new Point(175, 72);
+            this.repeatNumeric.Minimum = 1;
+            this.repeatNumeric.Maximum = 9999;
+            this.repeatNumeric.Value = 1;
+            this.repeatNumeric.Size = new Size(106, 27);
+            this.repeatNumeric.TabIndex = 0;
+            this.repeatNumeric.TextAlign = HorizontalAlignment.Right;
+            this.repeatNumeric.ValueChanged += this.StepSetting_ValueChanged;
+
+            this.holdLabel.AutoSize = true;
+            this.holdLabel.Location = new Point(18, 120);
+            this.holdLabel.Text = "按住时间 (ms)";
+            this.holdNumeric.Location = new Point(175, 117);
+            this.holdNumeric.Maximum = 600000;
+            this.holdNumeric.Size = new Size(106, 27);
+            this.holdNumeric.TabIndex = 1;
+            this.holdNumeric.TextAlign = HorizontalAlignment.Right;
+            this.holdNumeric.ValueChanged += this.StepSetting_ValueChanged;
+
+            this.delayLabel.AutoSize = true;
+            this.delayLabel.Location = new Point(18, 165);
+            this.delayLabel.Text = "步骤后等待 (ms)";
+            this.delayNumeric.Location = new Point(175, 162);
+            this.delayNumeric.Maximum = 600000;
+            this.delayNumeric.Size = new Size(106, 27);
+            this.delayNumeric.TabIndex = 2;
+            this.delayNumeric.TextAlign = HorizontalAlignment.Right;
+            this.delayNumeric.ValueChanged += this.StepSetting_ValueChanged;
+
+            this.moveStepUpButton.Location = new Point(18, 232);
+            this.moveStepUpButton.Size = new Size(40, 38);
+            this.moveStepUpButton.TabIndex = 3;
+            this.moveStepUpButton.Click += this.MoveStepUpButton_Click;
+            this.moveStepDownButton.Location = new Point(66, 232);
+            this.moveStepDownButton.Size = new Size(40, 38);
+            this.moveStepDownButton.TabIndex = 4;
+            this.moveStepDownButton.Click += this.MoveStepDownButton_Click;
+            this.removeStepButton.Location = new Point(114, 232);
+            this.removeStepButton.Size = new Size(40, 38);
+            this.removeStepButton.TabIndex = 5;
+            this.removeStepButton.Click += this.RemoveStepButton_Click;
+
+            this.cancelButton.DialogResult = DialogResult.Cancel;
+            this.cancelButton.Location = new Point(700, 448);
+            this.cancelButton.Size = new Size(44, 42);
+            this.cancelButton.TabIndex = 7;
+
+            this.saveButton.BackColor = Color.FromArgb(77, 98, 203);
+            this.saveButton.FlatAppearance.BorderSize = 0;
+            this.saveButton.FlatStyle = FlatStyle.Flat;
+            this.saveButton.ForeColor = Color.White;
+            this.saveButton.Location = new Point(754, 448);
+            this.saveButton.Size = new Size(44, 42);
+            this.saveButton.TabIndex = 8;
+            this.saveButton.UseVisualStyleBackColor = false;
+            this.saveButton.Click += this.SaveButton_Click;
+
+            this.AcceptButton = this.saveButton;
+            this.CancelButton = this.cancelButton;
+            this.AutoScaleDimensions = new SizeF(8F, 20F);
+            this.AutoScaleMode = AutoScaleMode.Font;
+            this.BackColor = Color.FromArgb(245, 247, 252);
+            this.ForeColor = Color.FromArgb(39, 45, 62);
+            this.ClientSize = new Size(822, 514);
+            this.Controls.AddRange(new Control[]
+            {
+                this.triggerLabel, this.triggerHelpButton, this.triggerKeyTextBox,
+                this.modeLabel, this.modeComboBox, this.sequenceLabel, this.sequenceHelpButton,
+                this.stepKeyTextBox, this.stepsListView, this.stepEditorPanel,
+                this.cancelButton, this.saveButton
+            });
+            this.Font = new Font("Microsoft YaHei UI", 9F);
+            this.FormBorderStyle = FormBorderStyle.FixedDialog;
+            this.Icon = Properties.Resources.ashlogo;
+            this.MaximizeBox = false;
+            this.MinimizeBox = false;
+            this.StartPosition = FormStartPosition.CenterParent;
+            this.Text = "新建按键序列";
+            this.Load += this.KeySelectionFrame_Load;
+            ConfigureIcons();
+            this.stepEditorPanel.ResumeLayout(false);
+            this.stepEditorPanel.PerformLayout();
+            ((ISupportInitialize)this.repeatNumeric).EndInit();
+            ((ISupportInitialize)this.holdNumeric).EndInit();
+            ((ISupportInitialize)this.delayNumeric).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
         }
-
-        private System.Windows.Forms.Button button1;
-
-        private System.Windows.Forms.ComboBox comboBox1;
-        private System.Windows.Forms.Label label1;
-        private System.Windows.Forms.Label label2;
-        private System.Windows.Forms.Label label3;
-
-        private System.Windows.Forms.TextBox textBox1;
-        private System.Windows.Forms.TextBox textBox2;
-
-        #endregion
     }
 }

@@ -17,15 +17,15 @@ namespace AshClicker
 
         public static AshKey Get(int keycode)
         {
-            if (!keyMap.TryGetValue(keycode, out var ashKey))
+            if (!KeyMap.TryGetValue(keycode, out var ashKey))
             {
-                ashKey = keyMap.GetValueOrDefault(keycode, keyMap[0xFFFF]);
+                ashKey = KeyMap[0xFFFF];
             }
 
             return ashKey;
         }
 
-        private static Dictionary<int, AshKey> keyMap = new Dictionary<int, AshKey>()
+        private static readonly Dictionary<int, AshKey> KeyMap = new Dictionary<int, AshKey>
         {
             [0x1B] = new AshKey("ESC", 0x1B, 100, "退出键"),
             [0x70] = new AshKey("F1", 0x70, 101, "功能键 F1"),

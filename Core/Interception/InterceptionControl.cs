@@ -50,6 +50,9 @@ namespace AshClicker
 
         // Context for Interception
         private IntPtr _context;
+        private IntPtr _sendBuffer;
+
+        public bool UseReusableSendBuffer { get; set; }
 
         public InterceptionControl()
         {
@@ -122,6 +125,12 @@ namespace AshClicker
                 _context = IntPtr.Zero;
             }
 
+            if (_sendBuffer != IntPtr.Zero)
+            {
+                Marshal.FreeHGlobal(_sendBuffer);
+                _sendBuffer = IntPtr.Zero;
+            }
+
             Cleanup();
         }
 
@@ -156,6 +165,17 @@ namespace AshClicker
 
         public int Send(int device, ref Stroke stroke)
         {
+            if (UseReusableSendBuffer)
+            {
+                if (_sendBuffer == IntPtr.Zero)
+                {
+                    _sendBuffer = Marshal.AllocHGlobal(Marshal.SizeOf(typeof(Stroke)));
+                }
+
+                Marshal.StructureToPtr(stroke, _sendBuffer, false);
+                return interception_send(_context, device, _sendBuffer, 1);
+            }
+
             IntPtr strokePtr = Marshal.AllocHGlobal(Marshal.SizeOf(typeof(Stroke)));
             try
             {

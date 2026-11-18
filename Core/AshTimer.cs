@@ -1,106 +1,80 @@
 using System;
-using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Windows.Forms;
 
 namespace AshClicker
 {
-    public class AshTimer
+    public sealed class AshTimer
     {
         public static readonly AshTimer Instance = new AshTimer();
 
-        private Task _clickerTask = null;
-        private static readonly CancellationTokenSource Source = new CancellationTokenSource();
-        private readonly object _lockObject = new object();
+        private readonly object _syncRoot = new object();
+        private Task _clickerTask;
 
         public Action Func { get; set; } = () => { };
         public int Delay { get; set; } = 1;
 
-        private bool _enabled = false;
+        private volatile bool _enabled;
 
-        public bool Enabled
-        {
-            get => _enabled;
-            set
-            {
-                _enabled = value;
-                if (_enabled)
-                {
-                    Start();
-                }
-                else
-                {
-                    Stop();
-                }
-            }
-        }
+        public bool Enabled => _enabled;
 
         private AshTimer()
         {
         }
 
         [DllImport("winmm.dll")]
-        public static extern uint timeBeginPeriod(uint uMilliseconds);
+        private static extern uint timeBeginPeriod(uint uMilliseconds);
 
         [DllImport("winmm.dll")]
-        public static extern uint timeEndPeriod(uint uMilliseconds);
+        private static extern uint timeEndPeriod(uint uMilliseconds);
 
         public void Start()
         {
-            if (!Enabled)
-            {
-                Enabled = true;
-                return;
-            }
-
-            timeBeginPeriod(1);
-            lock (_lockObject)
+            lock (_syncRoot)
             {
                 if (_clickerTask != null && !_clickerTask.IsCompleted)
                 {
-                    MessageBox.Show("按键已经开启了");
                     return;
                 }
 
+                _enabled = true;
+                timeBeginPeriod(1);
                 _clickerTask = Task.Run(() =>
                 {
-                    while (!Source.Token.IsCancellationRequested && Enabled)
+                    while (Enabled)
                     {
                         Func.Invoke();
                         AshStopwatch.PreciseDelay(Delay);
                     }
-                }, Source.Token);
+                });
             }
         }
 
         public void Stop()
         {
-            if (Enabled)
+            Task taskToWait;
+            lock (_syncRoot)
             {
-                Enabled = false;
-                return;
+                if (!Enabled && _clickerTask == null) return;
+
+                _enabled = false;
+                taskToWait = _clickerTask;
+                _clickerTask = null;
+            }
+
+            if (taskToWait != null)
+            {
+                try
+                {
+                    taskToWait.Wait();
+                }
+                catch (AggregateException)
+                {
+                }
             }
 
             timeEndPeriod(1);
-            lock (_lockObject)
-            {
-                if (_clickerTask != null)
-                {
-                    try
-                    {
-                        _clickerTask.Wait();
-                    }
-                    catch (AggregateException)
-                    {
-                    }
-                    finally
-                    {
-                        _clickerTask = null;
-                    }
-                }
-            }
         }
     }
 }
